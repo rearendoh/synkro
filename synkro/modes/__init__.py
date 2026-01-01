@@ -3,11 +3,13 @@
 from synkro.modes.config import ModeConfig, get_mode_config
 from synkro.modes.qa import QA_CONFIG
 from synkro.modes.sft import SFT_CONFIG
+from synkro.modes.tool_call import TOOL_CALL_CONFIG
 
 __all__ = [
     "ModeConfig",
     "get_mode_config",
     "QA_CONFIG",
     "SFT_CONFIG",
+    "TOOL_CALL_CONFIG",
 ]
 

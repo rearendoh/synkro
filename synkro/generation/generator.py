@@ -2,6 +2,7 @@
 
 import asyncio
 from enum import Enum
+from typing import TYPE_CHECKING
 
 from synkro.llm.client import LLM
 from synkro.llm.rate_limits import auto_workers
@@ -14,6 +15,9 @@ from synkro.errors import handle_error
 from synkro.factory import ComponentFactory
 from synkro.reporting import ProgressReporter, RichReporter
 from synkro.pipeline.runner import GenerationPipeline
+
+if TYPE_CHECKING:
+    from synkro.types.tool import ToolDefinition
 
 
 class Generator:
@@ -39,6 +43,12 @@ class Generator:
         >>> from synkro.reporting import SilentReporter
         >>> generator = Generator(reporter=SilentReporter())
         >>> dataset = generator.generate(policy)
+        
+        >>> # Tool call dataset
+        >>> from synkro import ToolDefinition
+        >>> tools = [ToolDefinition(name="search", description="...", parameters={})]
+        >>> generator = Generator(dataset_type=DatasetType.TOOL_CALL, tools=tools)
+        >>> dataset = generator.generate("Usage guidelines", traces=20)
     """
 
     def __init__(
@@ -49,22 +59,29 @@ class Generator:
         max_iterations: int = 1,
         skip_grading: bool = False,
         reporter: ProgressReporter | None = None,
+        tools: list["ToolDefinition"] | None = None,
     ):
         """
         Initialize the Generator.
 
         Args:
-            dataset_type: Type of dataset to generate (QA or SFT)
+            dataset_type: Type of dataset to generate (QA, SFT, or TOOL_CALL)
             generation_model: Model for scenarios/responses (default: gpt-4o-mini)
             grading_model: Model for grading (default: gpt-4o, recommend stronger)
             max_iterations: Max refinement iterations per trace (default: 1, no retries)
             skip_grading: Skip grading phase for faster generation (default: False)
             reporter: Progress reporter (default: RichReporter for console output)
+            tools: List of ToolDefinition for TOOL_CALL dataset type
         """
         self.dataset_type = dataset_type
         self.mode_config = get_mode_config(dataset_type)
         self.max_iterations = max_iterations
         self.skip_grading = skip_grading
+        self.tools = tools
+        
+        # Validate tools for TOOL_CALL dataset type
+        if dataset_type == DatasetType.TOOL_CALL and not tools:
+            raise ValueError("TOOL_CALL dataset type requires tools parameter")
         
         # Store model info for reporting
         self.generation_model = generation_model
@@ -79,6 +96,7 @@ class Generator:
             generation_llm=self.generation_llm,
             grading_llm=self.grading_llm,
             mode_config=self.mode_config,
+            tools=tools,
         )
         
         # Reporter for progress output

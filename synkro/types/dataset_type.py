@@ -16,6 +16,7 @@ class DatasetType(str, Enum):
         >>> from synkro import DatasetType
         >>> synkro.generate(policy, dataset_type=DatasetType.QA)
         >>> synkro.generate(policy, dataset_type=DatasetType.SFT)
+        >>> synkro.generate(policy, dataset_type=DatasetType.TOOL_CALL, tools=[...])
     """
 
     QA = "qa"
@@ -23,4 +24,7 @@ class DatasetType(str, Enum):
 
     SFT = "sft"
     """Supervised Fine-Tuning: {messages: [system, user, assistant]}"""
+
+    TOOL_CALL = "tool_call"
+    """Tool Calling: {messages: [..., {tool_calls: [...]}, {role: tool}, ...]}"""
 

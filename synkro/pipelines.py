@@ -10,12 +10,32 @@ Usage:
         dataset_type=DatasetType.SFT,
     )
     dataset = pipeline.generate("policy text", traces=50)
+    
+    # Tool calling pipeline
+    from synkro import ToolDefinition
+    
+    web_search = ToolDefinition(
+        name="web_search",
+        description="Search the web",
+        parameters={"type": "object", "properties": {"query": {"type": "string"}}}
+    )
+    
+    pipeline = create_pipeline(
+        dataset_type=DatasetType.TOOL_CALL,
+        tools=[web_search],
+    )
+    dataset = pipeline.generate("Search guidelines", traces=50)
 """
+
+from typing import TYPE_CHECKING
 
 from synkro.generation.generator import Generator
 from synkro.types import DatasetType
 from synkro.models import Model, OpenAI
 from synkro.reporting import ProgressReporter
+
+if TYPE_CHECKING:
+    from synkro.types.tool import ToolDefinition
 
 
 def create_pipeline(
@@ -25,17 +45,19 @@ def create_pipeline(
     max_iterations: int = 3,
     skip_grading: bool = False,
     reporter: ProgressReporter | None = None,
+    tools: list["ToolDefinition"] | None = None,
 ) -> Generator:
     """
     Create a pipeline for generating training datasets.
 
     Args:
         model: Model enum for generation (default: OpenAI.GPT_5_MINI)
-        dataset_type: Type of dataset - DatasetType.QA or SFT (default: SFT)
+        dataset_type: Type of dataset - QA, SFT, or TOOL_CALL (default: SFT)
         grading_model: Model enum for grading (default: OpenAI.GPT_52)
         max_iterations: Max refinement iterations per trace (default: 3)
         skip_grading: Skip grading phase for faster generation (default: False)
         reporter: Progress reporter (default: RichReporter for console output)
+        tools: List of ToolDefinition for TOOL_CALL dataset type
 
     Returns:
         Generator instance ready to use
@@ -55,6 +77,19 @@ def create_pipeline(
         >>> # Silent mode for embedding
         >>> from synkro.reporting import SilentReporter
         >>> pipeline = create_pipeline(reporter=SilentReporter())
+        
+        >>> # Tool calling dataset
+        >>> from synkro import ToolDefinition
+        >>> search_tool = ToolDefinition(
+        ...     name="web_search",
+        ...     description="Search the web for information",
+        ...     parameters={"type": "object", "properties": {"query": {"type": "string"}}}
+        ... )
+        >>> pipeline = create_pipeline(
+        ...     dataset_type=DatasetType.TOOL_CALL,
+        ...     tools=[search_tool],
+        ... )
+        >>> dataset = pipeline.generate("Search guidelines", traces=50)
     """
     return Generator(
         dataset_type=dataset_type,
@@ -63,6 +98,7 @@ def create_pipeline(
         max_iterations=max_iterations,
         skip_grading=skip_grading,
         reporter=reporter,
+        tools=tools,
     )
 
 

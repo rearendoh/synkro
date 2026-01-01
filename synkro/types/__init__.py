@@ -2,6 +2,7 @@
 
 Usage:
     from synkro.types import DatasetType, Message, Trace
+    from synkro.types import ToolDefinition, ToolCall, ToolFunction
 """
 
 from synkro.types.core import (
@@ -14,6 +15,12 @@ from synkro.types.core import (
     Category,
 )
 from synkro.types.dataset_type import DatasetType
+from synkro.types.tool import (
+    ToolDefinition,
+    ToolCall,
+    ToolFunction,
+    ToolResult,
+)
 
 __all__ = [
     # Dataset type
@@ -26,4 +33,9 @@ __all__ = [
     "GradeResult",
     "Plan",
     "Category",
+    # Tool types
+    "ToolDefinition",
+    "ToolCall",
+    "ToolFunction",
+    "ToolResult",
 ]

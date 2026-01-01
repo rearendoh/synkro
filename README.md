@@ -95,7 +95,7 @@ Output:
 
 ## Evaluation & Grading
 
-Every response is graded on policy compliance, citations, and reasoning. Failed responses are automatically refined (up to 3 iterations).
+Every response is graded on policy compliance, citations, and reasoning. Failed responses are automatically refined (up to N iterations).
 
 ```python
 from synkro.pipelines import create_pipeline

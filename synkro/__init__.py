@@ -22,11 +22,25 @@ Silent Mode (for embedding/testing):
     >>> from synkro import SilentReporter, create_pipeline
     >>> pipeline = create_pipeline(reporter=SilentReporter())
     >>> dataset = pipeline.generate("policy text")  # No console output
+
+Tool Call Dataset:
+    >>> from synkro import create_pipeline, ToolDefinition, DatasetType
+    >>> web_search = ToolDefinition(
+    ...     name="web_search",
+    ...     description="Search the web",
+    ...     parameters={"type": "object", "properties": {"query": {"type": "string"}}}
+    ... )
+    >>> pipeline = create_pipeline(
+    ...     dataset_type=DatasetType.TOOL_CALL,
+    ...     tools=[web_search],
+    ... )
+    >>> dataset = pipeline.generate("Search guidelines", traces=50)
 """
 
 from synkro.pipelines import create_pipeline
 from synkro.models import OpenAI, Anthropic, Google
 from synkro.types import DatasetType, Message, Scenario, Trace, GradeResult, Plan, Category
+from synkro.types import ToolDefinition, ToolCall, ToolFunction, ToolResult
 from synkro.core.policy import Policy
 from synkro.core.dataset import Dataset
 from synkro.llm.client import LLM
@@ -38,10 +52,11 @@ from synkro.quality.grader import Grader
 from synkro.quality.refiner import Refiner
 from synkro.formatters.sft import SFTFormatter
 from synkro.formatters.qa import QAFormatter
+from synkro.formatters.tool_call import ToolCallFormatter
 from synkro.prompts import SystemPrompt, ScenarioPrompt, ResponsePrompt, GradePrompt
 from synkro.reporting import ProgressReporter, RichReporter, SilentReporter
 
-__version__ = "0.3.2"
+__version__ = "0.4.0"
 
 __all__ = [
     # Pipeline creation
@@ -59,6 +74,11 @@ __all__ = [
     "GradeResult",
     "Plan",
     "Category",
+    # Tool types
+    "ToolDefinition",
+    "ToolCall",
+    "ToolFunction",
+    "ToolResult",
     # Generation
     "Generator",
     "ScenarioGenerator",
@@ -77,6 +97,7 @@ __all__ = [
     # Formatters
     "SFTFormatter",
     "QAFormatter",
+    "ToolCallFormatter",
     # Reporters
     "ProgressReporter",
     "RichReporter",

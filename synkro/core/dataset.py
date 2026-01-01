@@ -103,7 +103,7 @@ class Dataset(BaseModel):
 
         Args:
             path: Output file path (auto-generated if not provided)
-            format: Output format - "sft" or "qa"
+            format: Output format - "sft", "qa", or "tool_call"
 
         Returns:
             Self for method chaining
@@ -112,8 +112,9 @@ class Dataset(BaseModel):
             >>> dataset.save()  # Auto-names: synkro_sft_2024-01-15.jsonl
             >>> dataset.save("training.jsonl")
             >>> dataset.save("qa_data.jsonl", format="qa")
+            >>> dataset.save("tools.jsonl", format="tool_call")
         """
-        from synkro.formatters import SFTFormatter, QAFormatter
+        from synkro.formatters import SFTFormatter, QAFormatter, ToolCallFormatter
 
         # Auto-generate filename if not provided
         if path is None:
@@ -126,8 +127,10 @@ class Dataset(BaseModel):
             SFTFormatter().save(self.traces, path)
         elif format == "qa":
             QAFormatter().save(self.traces, path)
+        elif format == "tool_call":
+            ToolCallFormatter().save(self.traces, path)
         else:
-            raise ValueError(f"Unknown format: {format}. Use 'sft' or 'qa'")
+            raise ValueError(f"Unknown format: {format}. Use 'sft', 'qa', or 'tool_call'")
         
         # Print confirmation
         file_size = path.stat().st_size
@@ -141,19 +144,21 @@ class Dataset(BaseModel):
         Convert dataset to JSONL string.
 
         Args:
-            format: Output format - "sft" or "qa"
+            format: Output format - "sft", "qa", or "tool_call"
 
         Returns:
             JSONL formatted string
         """
-        from synkro.formatters import SFTFormatter, QAFormatter
+        from synkro.formatters import SFTFormatter, QAFormatter, ToolCallFormatter
 
         if format == "sft":
             return SFTFormatter().to_jsonl(self.traces)
         elif format == "qa":
             return QAFormatter().to_jsonl(self.traces)
+        elif format == "tool_call":
+            return ToolCallFormatter().to_jsonl(self.traces)
         else:
-            raise ValueError(f"Unknown format: {format}. Use 'sft' or 'qa'")
+            raise ValueError(f"Unknown format: {format}. Use 'sft', 'qa', or 'tool_call'")
 
     def to_huggingface(self):
         """

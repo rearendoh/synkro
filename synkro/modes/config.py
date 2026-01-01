@@ -51,10 +51,12 @@ def get_mode_config(dataset_type: "DatasetType") -> ModeConfig:
     from synkro.types.dataset_type import DatasetType
     from synkro.modes.qa import QA_CONFIG
     from synkro.modes.sft import SFT_CONFIG
+    from synkro.modes.tool_call import TOOL_CALL_CONFIG
 
     configs = {
         DatasetType.QA: QA_CONFIG,
         DatasetType.SFT: SFT_CONFIG,
+        DatasetType.TOOL_CALL: TOOL_CALL_CONFIG,
     }
 
     if dataset_type not in configs:

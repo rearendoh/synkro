@@ -1,17 +1,45 @@
 """Core Pydantic models for Synkro."""
 
-from typing import Literal
+from typing import Literal, Any
 from pydantic import BaseModel, Field
 
 
-Role = Literal["system", "user", "assistant"]
+Role = Literal["system", "user", "assistant", "tool"]
 
 
 class Message(BaseModel):
-    """A single message in a conversation."""
+    """
+    A single message in a conversation.
+    
+    Supports both regular chat messages and tool-calling messages.
+    
+    Examples:
+        >>> # Regular message
+        >>> Message(role="user", content="Hello")
+        
+        >>> # Assistant with tool call (tool_calls is list of dicts or ToolCall objects)
+        >>> Message(role="assistant", content=None, tool_calls=[...])
+        
+        >>> # Tool response
+        >>> Message(role="tool", content="Result", tool_call_id="call_123")
+    """
 
     role: Role
-    content: str
+    content: str | None = None
+    tool_calls: list[Any] | None = Field(
+        default=None,
+        description="Tool calls made by the assistant (list of ToolCall or dicts)"
+    )
+    tool_call_id: str | None = Field(
+        default=None,
+        description="ID of the tool call this message responds to (for tool role)"
+    )
+    
+    def model_post_init(self, __context) -> None:
+        """Validate message structure based on role."""
+        # For backwards compatibility, ensure content is string for non-tool roles
+        if self.role in ("system", "user") and self.content is None:
+            self.content = ""
 
 
 class Scenario(BaseModel):
@@ -50,7 +78,7 @@ class Trace(BaseModel):
         """Get the first user message content."""
         for m in self.messages:
             if m.role == "user":
-                return m.content
+                return m.content or ""
         return ""
 
     @property
@@ -58,8 +86,16 @@ class Trace(BaseModel):
         """Get the last assistant message content."""
         for m in reversed(self.messages):
             if m.role == "assistant":
-                return m.content
+                return m.content or ""
         return ""
+    
+    @property
+    def has_tool_calls(self) -> bool:
+        """Check if this trace contains any tool calls."""
+        for m in self.messages:
+            if m.tool_calls:
+                return True
+        return False
 
 
 class Category(BaseModel):
@@ -75,4 +111,3 @@ class Plan(BaseModel):
 
     categories: list[Category] = Field(description="Categories with trace allocations")
     reasoning: str = Field(description="Explanation of why these categories were chosen")
-
