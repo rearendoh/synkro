@@ -15,7 +15,7 @@ app = typer.Typer(
 def generate(
     source: str = typer.Argument(
         ...,
-        help="Policy text, file path (.pdf, .docx, .txt, .md), or URL",
+        help="Policy text, file path (.pdf, .docx, .txt, .md), folder path, or URL",
     ),
     output: Optional[Path] = typer.Option(
         None,
@@ -44,6 +44,8 @@ def generate(
     Examples:
 
         synkro generate policy.pdf
+
+        synkro generate policies/  # Load all files from folder
 
         synkro generate "All expenses over $50 need approval" --traces 50
 

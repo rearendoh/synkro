@@ -58,7 +58,7 @@ from synkro.formatters.tool_call import ToolCallFormatter
 from synkro.prompts import SystemPrompt, ScenarioPrompt, ResponsePrompt, GradePrompt
 from synkro.reporting import ProgressReporter, RichReporter, SilentReporter
 
-__version__ = "0.4.4"
+__version__ = "0.4.5"
 
 __all__ = [
     # Pipeline creation
