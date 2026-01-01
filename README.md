@@ -5,7 +5,8 @@ Turn policies, handbooks, and documentation into high-quality training data for 
 ## Features
 
 - **Quality Evaluation** - Each response is graded and automatically refined if it fails
-- **Multiple Formats** - SFT (chat) and QA (question-answer)
+- **Multiple Formats** - SFT (chat), QA (question-answer), and Tool Calling
+- **Tool Call Training** - Generate OpenAI function calling format for teaching models to use custom tools
 - **Top LLM Providers** - OpenAI, Anthropic, and Google
 - **File Support** - PDF, DOCX, TXT, Markdown, URLs
 - **CLI Included** - Generate datasets from the command line
@@ -63,6 +64,7 @@ dataset = pipeline.generate(policy)
 |--------|--------|----------|
 | **SFT** | Chat messages | Fine-tuning chat models |
 | **QA** | Question-answer pairs | RAG systems, knowledge bases |
+| **TOOL_CALL** | Function calling format | Training models to use custom tools |
 
 ### SFT (Default)
 
@@ -91,6 +93,55 @@ pipeline = create_pipeline(dataset_type=DatasetType.QA)
 Output:
 ```json
 {"question": "What's the approval process?", "answer": "You need...", "context": "..."}
+```
+
+### Tool Calling
+
+Generate training data for teaching models when and how to use your custom tools:
+
+```python
+from synkro import create_pipeline, ToolDefinition, DatasetType
+
+# Define your tools
+web_search = ToolDefinition(
+    name="web_search",
+    description="Search the web for current information",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search query"}
+        },
+        "required": ["query"]
+    },
+    mock_responses=["NYC: 72°F, sunny", "BTC: $67,234"]
+)
+
+# Create pipeline with tools
+pipeline = create_pipeline(
+    dataset_type=DatasetType.TOOL_CALL,
+    tools=[web_search],
+)
+
+# Generate from tool usage guidelines
+dataset = pipeline.generate("""
+Use web_search for real-time data like weather, prices.
+Answer general questions directly without tools.
+""", traces=20)
+
+dataset.save("tool_training.jsonl", format="tool_call")
+```
+
+Output (OpenAI function calling format):
+```json
+{"messages": [
+  {"role": "system", "content": "You have access to: web_search..."},
+  {"role": "user", "content": "What's the weather in NYC?"},
+  {"role": "assistant", "content": null, "tool_calls": [
+    {"id": "call_abc", "type": "function", "function": {"name": "web_search", "arguments": "{\"query\": \"weather NYC\"}"}}
+  ]},
+  {"role": "tool", "tool_call_id": "call_abc", "content": "NYC: 72°F, sunny"},
+  {"role": "assistant", "content": "The weather in NYC is 72°F and sunny."}
+]}
 ```
 
 ## Evaluation & Grading
@@ -132,6 +183,6 @@ synkro generate https://example.com/policy -o training.jsonl
 
 **Options:**
 - `--traces, -n` - Number of traces (default: 20)
-- `--format, -f` - Output format: sft or qa (default: sft)
+- `--format, -f` - Output format: sft, qa, or tool_call (default: sft)
 - `--output, -o` - Output file path
 - `--model, -m` - Model for generation

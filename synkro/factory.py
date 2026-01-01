@@ -17,6 +17,9 @@ from synkro.quality.refiner import Refiner
 if TYPE_CHECKING:
     from synkro.types.tool import ToolDefinition
     from synkro.generation.tool_simulator import ToolSimulator
+    from synkro.generation.tool_responses import ToolCallResponseGenerator
+    from synkro.quality.tool_grader import ToolCallGrader
+    from synkro.quality.tool_refiner import ToolCallRefiner
 
 
 class ComponentFactory:
@@ -73,14 +76,36 @@ class ComponentFactory:
         gen.prompt_template = self.mode_config.response_prompt
         return gen
     
-    def create_grader(self) -> Grader:
-        """Create a Grader with mode-specific prompts."""
+    def create_grader(self) -> "Grader | ToolCallGrader":
+        """
+        Create a Grader with mode-specific prompts.
+        
+        Auto-selects ToolCallGrader when tools are configured.
+        """
+        if self.has_tools:
+            from synkro.quality.tool_grader import ToolCallGrader
+            return ToolCallGrader(llm=self.grading_llm, tools=self.tools)
+        
         grader = Grader(llm=self.grading_llm)
         grader.prompt_template = self.mode_config.grade_prompt
         return grader
     
-    def create_refiner(self) -> Refiner:
-        """Create a Refiner with mode-specific prompts."""
+    def create_refiner(self) -> "Refiner | ToolCallRefiner":
+        """
+        Create a Refiner with mode-specific prompts.
+        
+        Auto-selects ToolCallRefiner when tools are configured.
+        This ensures tool_calls format is preserved during refinement.
+        """
+        if self.has_tools:
+            from synkro.quality.tool_refiner import ToolCallRefiner
+            simulator = self.create_tool_simulator()
+            return ToolCallRefiner(
+                llm=self.generation_llm,
+                tools=self.tools,
+                simulator=simulator,
+            )
+        
         refiner = Refiner(llm=self.generation_llm)
         refiner.prompt_template = self.mode_config.refine_prompt
         return refiner
@@ -93,6 +118,27 @@ class ComponentFactory:
             raise ValueError("Cannot create ToolSimulator without tools")
         
         return ToolSimulator(tools=self.tools, llm=self.generation_llm)
+    
+    def create_tool_call_response_generator(self) -> "ToolCallResponseGenerator":
+        """
+        Create a ToolCallResponseGenerator for generating proper tool call traces.
+        
+        This generator uses JSON mode to produce structured tool calls in
+        OpenAI function calling format.
+        """
+        from synkro.generation.tool_responses import ToolCallResponseGenerator
+        
+        if not self.tools:
+            raise ValueError("Cannot create ToolCallResponseGenerator without tools")
+        
+        # Create simulator for generating tool responses
+        simulator = self.create_tool_simulator()
+        
+        return ToolCallResponseGenerator(
+            tools=self.tools,
+            llm=self.generation_llm,
+            simulator=simulator,
+        )
     
     def get_tools_description(self) -> str:
         """Get formatted description of all available tools."""

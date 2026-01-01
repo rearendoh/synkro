@@ -199,4 +199,3 @@ The response should:
 - Handle edge cases gracefully (e.g., no results found)
 
 Return only the tool response content as a string."""
-

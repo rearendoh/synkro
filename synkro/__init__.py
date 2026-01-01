@@ -50,13 +50,15 @@ from synkro.generation.responses import ResponseGenerator
 from synkro.generation.planner import Planner
 from synkro.quality.grader import Grader
 from synkro.quality.refiner import Refiner
+from synkro.quality.tool_grader import ToolCallGrader
+from synkro.quality.tool_refiner import ToolCallRefiner
 from synkro.formatters.sft import SFTFormatter
 from synkro.formatters.qa import QAFormatter
 from synkro.formatters.tool_call import ToolCallFormatter
 from synkro.prompts import SystemPrompt, ScenarioPrompt, ResponsePrompt, GradePrompt
 from synkro.reporting import ProgressReporter, RichReporter, SilentReporter
 
-__version__ = "0.4.0"
+__version__ = "0.4.4"
 
 __all__ = [
     # Pipeline creation
@@ -87,6 +89,8 @@ __all__ = [
     # Quality
     "Grader",
     "Refiner",
+    "ToolCallGrader",
+    "ToolCallRefiner",
     # LLM
     "LLM",
     # Prompts

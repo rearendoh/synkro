@@ -249,3 +249,77 @@ class AgenticTrace(BaseModel):
     steps: list[AgenticStep] = Field(description="Steps of tool usage")
     final_answer: str = Field(description="Final comprehensive answer")
 
+
+# =============================================================================
+# TOOL CALL GRADING SCHEMAS
+# =============================================================================
+
+
+class ToolCallGrade(BaseModel):
+    """Grading result for a tool call trace.
+    
+    Evaluates tool usage on four criteria:
+    - Tool Selection: Did they use the right tool?
+    - Parameter Accuracy: Were the parameters correct?
+    - Response Synthesis: Did they use tool results correctly?
+    - Timing: Did they call tools at the right time?
+    """
+    
+    passed: bool = Field(
+        alias="pass",
+        description="Does the trace pass ALL criteria?"
+    )
+    
+    # Criterion 1: Tool Selection
+    tool_selection_correct: bool = Field(
+        description="Did the assistant choose the appropriate tool for the task?"
+    )
+    tool_selection_issues: list[str] = Field(
+        default_factory=list,
+        description="Specific issues with tool selection (wrong tool, missing tool, unnecessary tool)"
+    )
+    
+    # Criterion 2: Parameter Accuracy
+    parameters_valid: bool = Field(
+        description="Were the tool parameters correct (types, values, required fields)?"
+    )
+    parameter_issues: list[str] = Field(
+        default_factory=list,
+        description="Specific issues with parameters (wrong type, invalid value, missing required)"
+    )
+    
+    # Criterion 3: Response Synthesis
+    synthesis_accurate: bool = Field(
+        description="Did the assistant correctly use tool results without hallucination?"
+    )
+    synthesis_issues: list[str] = Field(
+        default_factory=list,
+        description="Specific issues with synthesis (hallucinated data, ignored results, misinterpreted)"
+    )
+    
+    # Criterion 4: Timing
+    timing_appropriate: bool = Field(
+        description="Did the assistant call tools at the right moment?"
+    )
+    timing_issues: list[str] = Field(
+        default_factory=list,
+        description="Specific issues with timing (premature call, delayed call, should have called earlier)"
+    )
+    
+    # Overall feedback
+    feedback: str = Field(
+        description="Summary of issues or 'Correct' if passing"
+    )
+    
+    class Config:
+        populate_by_name = True
+    
+    def get_all_issues(self) -> list[str]:
+        """Get all issues combined."""
+        return (
+            self.tool_selection_issues
+            + self.parameter_issues
+            + self.synthesis_issues
+            + self.timing_issues
+        )
+

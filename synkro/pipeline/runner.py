@@ -7,7 +7,13 @@ from synkro.core.policy import Policy
 from synkro.core.dataset import Dataset
 from synkro.factory import ComponentFactory
 from synkro.reporting import ProgressReporter
-from synkro.pipeline.phases import PlanPhase, ScenarioPhase, ResponsePhase, GradingPhase
+from synkro.pipeline.phases import (
+    PlanPhase,
+    ScenarioPhase,
+    ResponsePhase,
+    GradingPhase,
+    ToolCallResponsePhase,
+)
 
 
 class GenerationPipeline:
@@ -16,6 +22,9 @@ class GenerationPipeline:
     
     This class coordinates the execution of all phases and reports
     progress through the injected reporter.
+    
+    Supports both standard SFT/QA generation and TOOL_CALL generation
+    with proper OpenAI function calling format.
     
     Examples:
         >>> pipeline = GenerationPipeline(factory, reporter, workers=10)
@@ -51,6 +60,7 @@ class GenerationPipeline:
         self.scenario_phase = ScenarioPhase()
         self.response_phase = ResponsePhase()
         self.grading_phase = GradingPhase()
+        self.tool_call_response_phase = ToolCallResponsePhase()
     
     async def run(self, policy: Policy, traces: int, model: str, dataset_type: str) -> Dataset:
         """
@@ -68,12 +78,20 @@ class GenerationPipeline:
         start_time = datetime.now()
         semaphore = asyncio.Semaphore(self.workers)
         
+        # Check if this is a tool_call dataset
+        is_tool_call = dataset_type == "tool_call"
+        
         # Create components via factory
         planner = self.factory.create_planner()
         scenario_gen = self.factory.create_scenario_generator()
-        response_gen = self.factory.create_response_generator()
         grader = self.factory.create_grader()
         refiner = self.factory.create_refiner()
+        
+        # Create appropriate response generator
+        if is_tool_call and self.factory.has_tools:
+            tool_call_gen = self.factory.create_tool_call_response_generator()
+        else:
+            response_gen = self.factory.create_response_generator()
         
         # Report start
         self.reporter.on_start(traces, model, dataset_type)
@@ -86,12 +104,22 @@ class GenerationPipeline:
         scenarios = await self.scenario_phase.execute(policy, plan, scenario_gen, semaphore)
         self.reporter.on_scenarios_complete(scenarios)
         
-        # Phase 3: Response generation
-        all_traces = await self.response_phase.execute(policy, scenarios, response_gen, semaphore)
+        # Phase 3: Response generation (different for tool_call)
+        if is_tool_call and self.factory.has_tools:
+            all_traces = await self.tool_call_response_phase.execute(
+                policy, scenarios, tool_call_gen, semaphore
+            )
+        else:
+            all_traces = await self.response_phase.execute(
+                policy, scenarios, response_gen, semaphore
+            )
         self.reporter.on_responses_complete(list(all_traces))
         
         # Phase 4: Grading (optional)
+        # Note: TOOL_CALL datasets now use specialized ToolCallGrader and
+        # ToolCallRefiner that preserve the tool_calls format.
         pass_rate: float | None = None
+        
         if self.skip_grading:
             final_traces = list(all_traces)
             self.reporter.on_grading_skipped()

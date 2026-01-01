@@ -38,7 +38,7 @@ class Generator:
         >>> # QA dataset
         >>> generator = Generator(dataset_type=DatasetType.QA)
         >>> dataset = generator.generate(policy)
-        
+
         >>> # Silent mode (no console output)
         >>> from synkro.reporting import SilentReporter
         >>> generator = Generator(reporter=SilentReporter())
@@ -98,14 +98,14 @@ class Generator:
             mode_config=self.mode_config,
             tools=tools,
         )
-        
+
         # Reporter for progress output
         self.reporter = reporter or RichReporter()
-        
+
         # Auto-scale workers based on provider
         model_str = generation_model.value if isinstance(generation_model, Enum) else str(generation_model)
         self.workers = auto_workers(model_str)
-        
+
         # Create pipeline
         self.pipeline = GenerationPipeline(
             factory=self.factory,

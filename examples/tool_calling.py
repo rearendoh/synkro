@@ -2,12 +2,20 @@
 Synkro Tool Calling Example
 ============================
 
-Generate training data for teaching agents to use tools correctly.
+Generate training data for teaching models to use tools correctly.
 
 This example shows how to:
 1. Define tools with ToolDefinition
 2. Create a TOOL_CALL pipeline
-3. Generate traces that demonstrate correct tool usage
+3. Generate traces with specialized tool grading & refinement
+4. Save traces in OpenAI function calling format
+
+Tool call traces now use specialized ToolCallGrader 
+and ToolCallRefiner that evaluate tool-specific criteria:
+- Tool Selection: Did they use the right tool?
+- Parameter Accuracy: Were the parameters correct?
+- Response Synthesis: Did they use tool results correctly?
+- Timing: Did they call tools at the right time?
 
 Output format follows OpenAI's function calling format:
 {
@@ -156,7 +164,6 @@ pipeline = create_pipeline(
     tools=[web_search, customer_lookup, create_ticket],
     model=Google.GEMINI_25_FLASH,
     grading_model=Google.GEMINI_25_FLASH,
-    #grading_model=Google.GEMINI_25_PRO,
     max_iterations=2,
 )
 
@@ -174,6 +181,11 @@ dataset.save("tool_training.jsonl", format="tool_call")
 # View summary
 print("\n" + dataset.summary())
 
+# Show grading stats
+passed = sum(1 for t in dataset.traces if t.grade and t.grade.passed)
+total = len(dataset.traces)
+print(f"\n📊 Grading: {passed}/{total} traces passed ({passed/total*100:.0f}%)")
+
 # Show a sample trace
 if len(dataset) > 0:
     print("\n--- Sample Trace ---")
@@ -187,4 +199,10 @@ if len(dataset) > 0:
         else:
             content = msg.content or ""
             print(content[:80] + "..." if len(content) > 80 else content)
+    
+    # Show grade info if available
+    if trace.grade:
+        print(f"\n📝 Grade: {'✓ PASS' if trace.grade.passed else '✗ FAIL'}")
+        if trace.grade.feedback:
+            print(f"   Feedback: {trace.grade.feedback[:100]}...")
 

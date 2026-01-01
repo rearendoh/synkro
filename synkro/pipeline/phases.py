@@ -6,6 +6,7 @@ of the generation pipeline.
 
 import asyncio
 from asyncio import Semaphore
+from typing import TYPE_CHECKING
 
 from synkro.core.policy import Policy
 from synkro.types.core import Plan, Scenario, Trace
@@ -14,6 +15,9 @@ from synkro.generation.scenarios import ScenarioGenerator
 from synkro.generation.responses import ResponseGenerator
 from synkro.quality.grader import Grader
 from synkro.quality.refiner import Refiner
+
+if TYPE_CHECKING:
+    from synkro.generation.tool_responses import ToolCallResponseGenerator
 
 
 class PlanPhase:
@@ -190,5 +194,44 @@ class GradingPhase:
         return final_traces, pass_rate
 
 
-__all__ = ["PlanPhase", "ScenarioPhase", "ResponsePhase", "GradingPhase"]
+class ToolCallResponsePhase:
+    """
+    Tool call response generation phase - creates traces with proper tool calling format.
+    
+    Uses ToolCallResponseGenerator to produce traces with:
+    - System message with tool descriptions
+    - User message
+    - Assistant message with tool_calls (or direct response)
+    - Tool response messages  
+    - Final assistant message
+    """
+    
+    async def execute(
+        self,
+        policy: Policy,
+        scenarios: list[Scenario],
+        generator: "ToolCallResponseGenerator",
+        semaphore: Semaphore,
+    ) -> list[Trace]:
+        """
+        Execute tool call response generation.
+        
+        Args:
+            policy: The policy/guidelines text
+            scenarios: List of scenarios to respond to
+            generator: ToolCallResponseGenerator component
+            semaphore: Semaphore for rate limiting
+            
+        Returns:
+            List of traces with proper tool calling format
+        """
+        async def limited_generate(scenario):
+            async with semaphore:
+                return await generator.generate_single(policy.text, scenario)
+        
+        tasks = [limited_generate(s) for s in scenarios]
+        return await asyncio.gather(*tasks)
+
+
+__all__ = ["PlanPhase", "ScenarioPhase", "ResponsePhase", "GradingPhase", "ToolCallResponsePhase"]
 

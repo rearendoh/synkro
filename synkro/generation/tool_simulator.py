@@ -71,7 +71,7 @@ class ToolSimulator:
             MOCK_RESPONSES=mock_responses,
         )
         
-        response = await self.llm.complete(prompt)
+        response = await self.llm.generate(prompt)
         return response.strip()
     
     async def simulate_batch(self, tool_calls: list["ToolCall"]) -> list[str]:
