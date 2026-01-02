@@ -12,44 +12,57 @@ class QAFormatter:
     """
     Format traces for Question-Answer datasets.
 
-    QA format is simple question/answer pairs with optional context,
-    suitable for RAG training and knowledge extraction.
+    Outputs OpenAI-compatible messages format for finetuning compatibility
+    with OpenAI, TogetherAI, and similar platforms.
 
     Example output:
-        {"question": "...", "answer": "...", "context": "..."}
-        {"question": "...", "answer": "...", "context": "..."}
+        {"messages": [{"role": "system", "content": "..."}, {"role": "user", "content": "..."}, {"role": "assistant", "content": "..."}]}
+
+    For multi-turn traces, all messages are included in the output.
     """
 
-    def __init__(self, include_context: bool = True):
+    def __init__(self, include_context: bool = True, include_metadata: bool = False):
         """
         Initialize the QA formatter.
 
         Args:
-            include_context: If True, include source context in output
+            include_context: If True, include context in system message
+            include_metadata: If True, include scenario metadata
         """
         self.include_context = include_context
+        self.include_metadata = include_metadata
 
     def format(self, traces: list["Trace"]) -> list[dict]:
         """
-        Format traces as QA pairs.
+        Format traces as OpenAI-compatible messages format.
 
         Args:
             traces: List of traces to format
 
         Returns:
-            List of QA examples (dicts with 'question', 'answer', optionally 'context')
+            List of examples with 'messages' key containing role/content dicts
         """
         examples = []
 
         for trace in traces:
-            example = {
-                "question": trace.user_message,
-                "answer": trace.assistant_message,
-            }
+            # Build messages list from trace
+            messages = []
+            for msg in trace.messages:
+                message_dict = {
+                    "role": msg.role,
+                    "content": msg.content or "",
+                }
+                messages.append(message_dict)
 
-            if self.include_context:
-                # Use scenario context or the source section if available
-                example["context"] = trace.scenario.context or ""
+            example = {"messages": messages}
+
+            if self.include_metadata:
+                example["metadata"] = {
+                    "scenario": trace.scenario.description,
+                    "context": trace.scenario.context,
+                    "category": trace.scenario.category,
+                    "turn_count": sum(1 for m in trace.messages if m.role == "assistant"),
+                }
 
             examples.append(example)
 

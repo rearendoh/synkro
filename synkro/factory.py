@@ -2,6 +2,13 @@
 
 This module provides a factory for creating pipeline components,
 enabling testability and flexible configuration.
+
+Supports both legacy components and Golden Trace components:
+- Logic Extractor (The Cartographer)
+- Golden Scenario Generator (The Adversary)
+- Golden Response Generator (The Thinker)
+- Trace Verifier (The Auditor)
+- Golden Refiner
 """
 
 from typing import TYPE_CHECKING
@@ -11,8 +18,11 @@ from synkro.modes.config import ModeConfig
 from synkro.generation.planner import Planner
 from synkro.generation.scenarios import ScenarioGenerator
 from synkro.generation.responses import ResponseGenerator
+from synkro.generation.follow_ups import FollowUpGenerator
+from synkro.generation.multiturn_responses import MultiTurnResponseGenerator
 from synkro.quality.grader import Grader
 from synkro.quality.refiner import Refiner
+from synkro.quality.multiturn_grader import MultiTurnGrader
 
 if TYPE_CHECKING:
     from synkro.types.tool import ToolDefinition
@@ -20,6 +30,12 @@ if TYPE_CHECKING:
     from synkro.generation.tool_responses import ToolCallResponseGenerator
     from synkro.quality.tool_grader import ToolCallGrader
     from synkro.quality.tool_refiner import ToolCallRefiner
+    from synkro.generation.logic_extractor import LogicExtractor
+    from synkro.generation.golden_scenarios import GoldenScenarioGenerator
+    from synkro.generation.golden_responses import GoldenResponseGenerator
+    from synkro.generation.golden_tool_responses import GoldenToolCallResponseGenerator
+    from synkro.quality.verifier import TraceVerifier
+    from synkro.quality.golden_refiner import GoldenRefiner
 
 
 class ComponentFactory:
@@ -154,6 +170,95 @@ class ComponentFactory:
     def has_tools(self) -> bool:
         """Check if tools are configured."""
         return bool(self.tools)
+
+    def create_follow_up_generator(self) -> FollowUpGenerator:
+        """Create a FollowUpGenerator for multi-turn conversations."""
+        return FollowUpGenerator(llm=self.generation_llm)
+
+    def create_multi_turn_response_generator(self) -> MultiTurnResponseGenerator:
+        """Create a MultiTurnResponseGenerator for multi-turn trace generation."""
+        return MultiTurnResponseGenerator(llm=self.generation_llm)
+
+    def create_multi_turn_grader(self) -> MultiTurnGrader:
+        """Create a MultiTurnGrader for per-turn and overall conversation grading."""
+        return MultiTurnGrader(llm=self.grading_llm)
+
+    # =========================================================================
+    # GOLDEN TRACE COMPONENTS
+    # =========================================================================
+
+    def create_logic_extractor(self) -> "LogicExtractor":
+        """
+        Create a LogicExtractor (The Cartographer).
+
+        Uses the grading LLM (stronger model) for accurate rule extraction.
+        """
+        from synkro.generation.logic_extractor import LogicExtractor
+        return LogicExtractor(llm=self.grading_llm)
+
+    def create_golden_scenario_generator(self) -> "GoldenScenarioGenerator":
+        """
+        Create a GoldenScenarioGenerator (The Adversary).
+
+        Generates typed scenarios (positive, negative, edge_case, irrelevant)
+        with rule targeting.
+        """
+        from synkro.generation.golden_scenarios import GoldenScenarioGenerator
+        return GoldenScenarioGenerator(llm=self.generation_llm)
+
+    def create_golden_response_generator(self) -> "GoldenResponseGenerator":
+        """
+        Create a GoldenResponseGenerator (The Thinker).
+
+        Generates traces with grounded Chain-of-Thought reasoning
+        and rule citations.
+        """
+        from synkro.generation.golden_responses import GoldenResponseGenerator
+        return GoldenResponseGenerator(llm=self.generation_llm)
+
+    def create_golden_tool_call_generator(self) -> "GoldenToolCallResponseGenerator":
+        """
+        Create a GoldenToolCallResponseGenerator (The Thinker for Tools).
+
+        Generates tool call traces with rule citations for tool selection
+        decisions. Requires tools to be configured.
+        """
+        from synkro.generation.golden_tool_responses import GoldenToolCallResponseGenerator
+
+        if not self.tools:
+            raise ValueError("Cannot create GoldenToolCallResponseGenerator without tools")
+
+        simulator = self.create_tool_simulator()
+        return GoldenToolCallResponseGenerator(
+            tools=self.tools,
+            llm=self.generation_llm,
+            simulator=simulator,
+        )
+
+    def create_verifier(self) -> "TraceVerifier":
+        """
+        Create a TraceVerifier (The Auditor).
+
+        Verifies traces against the Logic Map to ensure:
+        - No skipped rules
+        - No hallucinated rules
+        - No contradictions
+        - DAG compliance
+
+        Uses the grading LLM (stronger model) for accurate verification.
+        """
+        from synkro.quality.verifier import TraceVerifier
+        return TraceVerifier(llm=self.grading_llm)
+
+    def create_golden_refiner(self) -> "GoldenRefiner":
+        """
+        Create a GoldenRefiner.
+
+        Refines traces that fail verification, using Logic Map context
+        to fix skipped rules, hallucinations, and contradictions.
+        """
+        from synkro.quality.golden_refiner import GoldenRefiner
+        return GoldenRefiner(llm=self.generation_llm)
 
 
 __all__ = ["ComponentFactory"]

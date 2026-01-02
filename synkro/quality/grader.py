@@ -6,6 +6,7 @@ from synkro.types.core import Trace, GradeResult
 from synkro.prompts.templates import BATCHED_GRADER_PROMPT
 from synkro.schemas import SingleGrade
 from synkro.parsers import parse_batched_grades
+from synkro.quality.multiturn_grader import MultiTurnGrader
 
 
 class Grader:
@@ -17,6 +18,8 @@ class Grader:
     - Proper citations
     - Complete reasoning
     - Actionable recommendations
+
+    Automatically detects multi-turn traces and delegates to MultiTurnGrader.
 
     Examples:
         >>> grader = Grader()
@@ -34,10 +37,24 @@ class Grader:
             model: Model to use if creating LLM (recommend stronger model for grading)
         """
         self.llm = llm or LLM(model=model)
+        self._multi_turn_grader: MultiTurnGrader | None = None
+
+    @property
+    def multi_turn_grader(self) -> MultiTurnGrader:
+        """Lazy initialization of multi-turn grader."""
+        if self._multi_turn_grader is None:
+            self._multi_turn_grader = MultiTurnGrader(llm=self.llm)
+        return self._multi_turn_grader
+
+    def _count_assistant_turns(self, trace: Trace) -> int:
+        """Count the number of assistant messages (turns) in a trace."""
+        return sum(1 for m in trace.messages if m.role == "assistant")
 
     async def grade(self, trace: Trace, policy_text: str) -> GradeResult:
         """
         Grade a single trace.
+
+        Automatically detects multi-turn traces and delegates to MultiTurnGrader.
 
         Args:
             trace: The trace to grade
@@ -46,6 +63,12 @@ class Grader:
         Returns:
             GradeResult with pass/fail and feedback
         """
+        # Detect multi-turn and delegate
+        assistant_count = self._count_assistant_turns(trace)
+        if assistant_count > 1:
+            return await self.multi_turn_grader.grade(trace, policy_text)
+
+        # Single-turn grading
         prompt = f"""You are a strict evaluator. Grade this response.
 
 A response PASSES only if ALL are true:

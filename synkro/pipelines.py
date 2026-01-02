@@ -46,6 +46,7 @@ def create_pipeline(
     skip_grading: bool = False,
     reporter: ProgressReporter | None = None,
     tools: list["ToolDefinition"] | None = None,
+    turns: int | str = "auto",
 ) -> Generator:
     """
     Create a pipeline for generating training datasets.
@@ -58,6 +59,8 @@ def create_pipeline(
         skip_grading: Skip grading phase for faster generation (default: False)
         reporter: Progress reporter (default: RichReporter for console output)
         tools: List of ToolDefinition for TOOL_CALL dataset type
+        turns: Conversation turns per trace. Use int for fixed turns, or "auto"
+            for policy complexity-driven turns (Simple=1-2, Conditional=3, Complex=5+)
 
     Returns:
         Generator instance ready to use
@@ -73,11 +76,15 @@ def create_pipeline(
         ... )
         >>> dataset = pipeline.generate("policy text", traces=50)
         >>> dataset.save("training.jsonl")
-        
+
+        >>> # Multi-turn with fixed 3 turns
+        >>> pipeline = create_pipeline(turns=3)
+        >>> dataset = pipeline.generate("policy text", traces=50)
+
         >>> # Silent mode for embedding
         >>> from synkro.reporting import SilentReporter
         >>> pipeline = create_pipeline(reporter=SilentReporter())
-        
+
         >>> # Tool calling dataset
         >>> from synkro import ToolDefinition
         >>> search_tool = ToolDefinition(
@@ -99,6 +106,7 @@ def create_pipeline(
         skip_grading=skip_grading,
         reporter=reporter,
         tools=tools,
+        turns=turns,
     )
 
 

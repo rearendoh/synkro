@@ -6,6 +6,7 @@ from synkro.types.core import Scenario, Trace, Message
 from synkro.prompts.templates import BATCHED_RESPONSE_PROMPT, SYSTEM_PROMPT
 from synkro.schemas import SingleResponse
 from synkro.parsers import parse_batched_responses, extract_content
+from synkro.generation.multiturn_responses import MultiTurnResponseGenerator
 
 
 class ResponseGenerator:
@@ -29,11 +30,20 @@ class ResponseGenerator:
             model: Model to use if creating LLM
         """
         self.llm = llm or LLM(model=model)
+        self._multi_turn_gen: MultiTurnResponseGenerator | None = None
+
+    @property
+    def multi_turn_gen(self) -> MultiTurnResponseGenerator:
+        """Lazy initialization of multi-turn generator."""
+        if self._multi_turn_gen is None:
+            self._multi_turn_gen = MultiTurnResponseGenerator(llm=self.llm)
+        return self._multi_turn_gen
 
     async def generate(
         self,
         policy_text: str,
         scenarios: list[Scenario],
+        target_turns: int = 1,
     ) -> list[Trace]:
         """
         Generate responses for scenarios.
@@ -41,6 +51,7 @@ class ResponseGenerator:
         Args:
             policy_text: The policy text
             scenarios: List of scenarios to respond to
+            target_turns: Number of conversation turns (1 for single-turn)
 
         Returns:
             List of traces with generated responses
@@ -49,7 +60,7 @@ class ResponseGenerator:
 
         # Generate responses one at a time for better quality
         for scenario in scenarios:
-            trace = await self._generate_single(policy_text, scenario)
+            trace = await self._generate_single(policy_text, scenario, target_turns)
             traces.append(trace)
 
         return traces
@@ -58,8 +69,26 @@ class ResponseGenerator:
         self,
         policy_text: str,
         scenario: Scenario,
+        target_turns: int = 1,
     ) -> Trace:
-        """Generate a single trace for one scenario."""
+        """
+        Generate a single trace for one scenario.
+
+        Args:
+            policy_text: The policy text
+            scenario: The scenario to respond to
+            target_turns: Number of conversation turns (1 for single-turn)
+
+        Returns:
+            Trace with generated messages
+        """
+        # Delegate to multi-turn generator for multi-turn traces
+        if target_turns > 1:
+            return await self.multi_turn_gen.generate_single(
+                policy_text, scenario, target_turns
+            )
+
+        # Single-turn generation
         prompt = f"""You are a domain expert generating a training example.
 
 Given the scenario and policy below, create a complete training example.

@@ -60,6 +60,7 @@ class Generator:
         skip_grading: bool = False,
         reporter: ProgressReporter | None = None,
         tools: list["ToolDefinition"] | None = None,
+        turns: int | str = "auto",
     ):
         """
         Initialize the Generator.
@@ -72,12 +73,15 @@ class Generator:
             skip_grading: Skip grading phase for faster generation (default: False)
             reporter: Progress reporter (default: RichReporter for console output)
             tools: List of ToolDefinition for TOOL_CALL dataset type
+            turns: Conversation turns per trace. Use int for fixed turns, or "auto"
+                for policy complexity-driven turns (Simple=1-2, Conditional=3, Complex=5+)
         """
         self.dataset_type = dataset_type
         self.mode_config = get_mode_config(dataset_type)
         self.max_iterations = max_iterations
         self.skip_grading = skip_grading
         self.tools = tools
+        self.turns = turns
         
         # Validate tools for TOOL_CALL dataset type
         if dataset_type == DatasetType.TOOL_CALL and not tools:
@@ -138,12 +142,13 @@ class Generator:
     async def _generate_async(self, policy: Policy, traces: int) -> Dataset:
         """Async implementation of generation pipeline."""
         model_str = self.generation_model.value if isinstance(self.generation_model, Enum) else str(self.generation_model)
-        
+
         return await self.pipeline.run(
             policy=policy,
             traces=traces,
             model=model_str,
             dataset_type=self.dataset_type.value,
+            turns=self.turns,
         )
 
     async def generate_async(self, policy: Policy | str, traces: int = 20) -> Dataset:

@@ -140,6 +140,19 @@ class SingleResponse(BaseModel):
     )
 
 
+class MultiTurnResponse(BaseModel):
+    """Multi-turn response output for complexity-driven generation."""
+
+    messages: list[ChatMessage] = Field(
+        min_length=3,
+        description="Conversation messages (variable length based on turn count)"
+    )
+    turn_count: int = Field(
+        ge=1, le=10,
+        description="Number of user-assistant exchanges in this conversation"
+    )
+
+
 class SingleGrade(BaseModel):
     """Single grade output for parallel generation."""
 
@@ -322,4 +335,121 @@ class ToolCallGrade(BaseModel):
             + self.synthesis_issues
             + self.timing_issues
         )
+
+
+# =============================================================================
+# GOLDEN TRACE SCHEMAS
+# =============================================================================
+
+
+class RuleExtraction(BaseModel):
+    """A single rule extracted from the policy."""
+
+    rule_id: str = Field(description="Unique identifier (e.g., 'R001')")
+    text: str = Field(description="Exact rule text from the policy")
+    condition: str = Field(description="The 'if' part - when this rule applies")
+    action: str = Field(description="The 'then' part - what happens")
+    dependencies: list[str] = Field(
+        default_factory=list,
+        description="Rule IDs that must be evaluated before this rule"
+    )
+    category: Literal["constraint", "permission", "procedure", "exception"] = Field(
+        description="Type of rule"
+    )
+
+
+class LogicMapOutput(BaseModel):
+    """Output schema for logic extraction - the complete DAG of rules."""
+
+    rules: list[RuleExtraction] = Field(
+        description="All rules extracted from the policy"
+    )
+    root_rules: list[str] = Field(
+        description="Rule IDs with no dependencies (entry points)"
+    )
+    reasoning: str = Field(
+        description="Explanation of rule extraction and relationship identification"
+    )
+
+
+class GoldenScenarioOutput(BaseModel):
+    """Output schema for a single golden scenario."""
+
+    description: str = Field(description="The user's request or question")
+    context: str = Field(default="", description="Additional context")
+    scenario_type: Literal["positive", "negative", "edge_case", "irrelevant"] = Field(
+        description="Type of scenario"
+    )
+    target_rule_ids: list[str] = Field(
+        description="Rule IDs this scenario tests"
+    )
+    expected_outcome: str = Field(
+        description="Expected behavior based on rules"
+    )
+
+
+class GoldenScenariosArray(BaseModel):
+    """Array of generated golden scenarios."""
+
+    scenarios: list[GoldenScenarioOutput]
+
+
+class ReasoningStepOutput(BaseModel):
+    """A single step in the Chain-of-Thought reasoning."""
+
+    rule_id: str = Field(description="The rule being evaluated")
+    rule_text: str = Field(description="The text of the rule")
+    applies: bool = Field(description="Whether this rule applies")
+    reasoning: str = Field(description="Why the rule does/doesn't apply")
+    exclusions: list[str] = Field(
+        default_factory=list,
+        description="Rule IDs excluded because this rule applies"
+    )
+
+
+class GoldenTraceOutput(BaseModel):
+    """Output schema for a golden trace with grounded reasoning."""
+
+    messages: list[ChatMessage] = Field(
+        description="The conversation messages"
+    )
+    reasoning_chain: list[ReasoningStepOutput] = Field(
+        description="Step-by-step reasoning with rule citations"
+    )
+    rules_applied: list[str] = Field(
+        description="Rule IDs that were applied in the response"
+    )
+    rules_excluded: list[str] = Field(
+        default_factory=list,
+        description="Rule IDs that were explicitly excluded and why"
+    )
+
+
+class VerificationOutput(BaseModel):
+    """Output schema for trace verification against Logic Map."""
+
+    passed: bool = Field(description="Whether the trace passed verification")
+    issues: list[str] = Field(
+        default_factory=list,
+        description="List of issues found"
+    )
+    skipped_rules: list[str] = Field(
+        default_factory=list,
+        description="Rule IDs that should have been applied but weren't"
+    )
+    hallucinated_rules: list[str] = Field(
+        default_factory=list,
+        description="Rule IDs cited that don't exist or don't apply"
+    )
+    contradictions: list[str] = Field(
+        default_factory=list,
+        description="Logical contradictions found"
+    )
+    rules_verified: list[str] = Field(
+        default_factory=list,
+        description="Rule IDs correctly applied"
+    )
+    feedback: str = Field(
+        description="Summary of verification result"
+    )
 

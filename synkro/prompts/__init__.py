@@ -20,6 +20,13 @@ from synkro.prompts.templates import (
     SINGLE_RESPONSE_PROMPT,
     SINGLE_GRADE_PROMPT,
 )
+from synkro.prompts.multiturn_templates import (
+    FOLLOW_UP_GENERATION_PROMPT,
+    MULTI_TURN_RESPONSE_PROMPT,
+    MULTI_TURN_INITIAL_PROMPT,
+    MULTI_TURN_GRADE_PROMPT,
+    MULTI_TURN_REFINE_PROMPT,
+)
 
 __all__ = [
     # Prompt classes
@@ -40,5 +47,11 @@ __all__ = [
     "BATCHED_REFINER_PROMPT",
     "SINGLE_RESPONSE_PROMPT",
     "SINGLE_GRADE_PROMPT",
+    # Multi-turn templates
+    "FOLLOW_UP_GENERATION_PROMPT",
+    "MULTI_TURN_RESPONSE_PROMPT",
+    "MULTI_TURN_INITIAL_PROMPT",
+    "MULTI_TURN_GRADE_PROMPT",
+    "MULTI_TURN_REFINE_PROMPT",
 ]
 

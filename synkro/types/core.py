@@ -107,7 +107,15 @@ class Category(BaseModel):
 
 
 class Plan(BaseModel):
-    """A generation plan with categories."""
+    """A generation plan with categories and complexity analysis."""
 
     categories: list[Category] = Field(description="Categories with trace allocations")
     reasoning: str = Field(description="Explanation of why these categories were chosen")
+    recommended_turns: int = Field(
+        default=1,
+        description="Recommended conversation turns based on policy complexity"
+    )
+    complexity_level: Literal["simple", "conditional", "complex"] = Field(
+        default="simple",
+        description="Policy complexity level: simple (1-2 turns), conditional (3 turns), complex (5+ turns)"
+    )

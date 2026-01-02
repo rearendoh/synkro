@@ -127,22 +127,28 @@ class ToolCallResponseGenerator:
         self,
         policy_text: str,
         scenario: Scenario,
+        target_turns: int = 1,
     ) -> Trace:
         """
         Generate a single tool call trace.
-        
+
         Args:
             policy_text: The policy/guidelines text
             scenario: The scenario to respond to
-            
+            target_turns: Number of conversation turns (1 for single-turn).
+                Note: Multi-turn tool calling is not yet fully implemented.
+                For now, target_turns > 1 will still generate a single turn.
+
         Returns:
             Trace with proper tool calling format
         """
+        # TODO: Implement multi-turn tool calling support
+        # For now, we generate single-turn regardless of target_turns
         tools_desc = self._get_tools_description()
-        
+
         # Step 1: Get LLM decision on tool usage
         decision = await self._get_tool_decision(policy_text, scenario, tools_desc)
-        
+
         # Step 2: Build the message sequence
         messages = await self._build_message_sequence(
             policy_text, scenario, tools_desc, decision

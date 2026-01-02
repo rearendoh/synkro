@@ -3,8 +3,8 @@
 from synkro.llm.client import LLM
 from synkro.models import Model, OpenAI
 from synkro.types.core import Plan, Category
-from synkro.prompts.templates import POLICY_PLANNING_PROMPT
-from synkro.schemas import PolicyPlan
+from synkro.prompts.templates import POLICY_PLANNING_PROMPT, POLICY_COMPLEXITY_PROMPT
+from synkro.schemas import PolicyPlan, PolicyComplexity
 
 
 class Planner:
@@ -32,18 +32,53 @@ class Planner:
         """
         self.llm = llm or LLM(model=model)
 
-    async def plan(self, policy_text: str, target_traces: int) -> Plan:
+    async def analyze_complexity(self, policy_text: str) -> PolicyComplexity:
+        """
+        Analyze policy complexity to determine optimal conversation turns.
+
+        Uses the PolicyComplexity schema to assess:
+        - Variable count (rules, conditions, exceptions)
+        - Complexity level (simple, conditional, complex)
+        - Recommended turns (1-6)
+
+        Args:
+            policy_text: The policy text to analyze
+
+        Returns:
+            PolicyComplexity with recommended turns and complexity level
+        """
+        prompt = f"""{POLICY_COMPLEXITY_PROMPT}
+
+POLICY:
+{policy_text}
+
+Analyze the policy complexity and recommend conversation turns."""
+
+        try:
+            return await self.llm.generate_structured(prompt, PolicyComplexity)
+        except Exception:
+            # Default to simple single-turn
+            return PolicyComplexity(
+                variable_count=1,
+                complexity_level="simple",
+                recommended_turns=1,
+                reasoning="Default - unable to analyze complexity",
+            )
+
+    async def plan(self, policy_text: str, target_traces: int, analyze_turns: bool = True) -> Plan:
         """
         Create a generation plan for the policy.
 
-        Analyzes the policy and determines optimal category distribution.
+        Analyzes the policy and determines optimal category distribution
+        and conversation turn count.
 
         Args:
             policy_text: The policy text to analyze
             target_traces: Target number of traces to generate
+            analyze_turns: Whether to analyze policy for turn recommendation
 
         Returns:
-            Plan object with categories and reasoning
+            Plan object with categories, reasoning, and turn recommendations
         """
         prompt = f"""{POLICY_PLANNING_PROMPT}
 
@@ -54,10 +89,15 @@ TARGET TRACES: {target_traces}
 
 Analyze the policy and create a plan with categories for generating training data."""
 
+        # Analyze complexity for turn recommendations
+        complexity = None
+        if analyze_turns:
+            complexity = await self.analyze_complexity(policy_text)
+
         try:
             # Use structured output for reliable planning
             parsed = await self.llm.generate_structured(prompt, PolicyPlan)
-            
+
             # Convert to typed objects
             categories = [
                 Category(
@@ -71,6 +111,8 @@ Analyze the policy and create a plan with categories for generating training dat
             return Plan(
                 categories=categories,
                 reasoning=parsed.reasoning,
+                recommended_turns=complexity.recommended_turns if complexity else 1,
+                complexity_level=complexity.complexity_level if complexity else "simple",
             )
         except Exception:
             # Fallback plan
@@ -83,5 +125,7 @@ Analyze the policy and create a plan with categories for generating training dat
                     Category(name="Violations", description="Clear failure cases", count=third + remainder),
                 ],
                 reasoning="Default plan - unable to parse LLM response",
+                recommended_turns=complexity.recommended_turns if complexity else 1,
+                complexity_level=complexity.complexity_level if complexity else "simple",
             )
 

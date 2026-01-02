@@ -116,6 +116,7 @@ __all__ = [
 def generate(
     policy: str | Policy,
     traces: int = 20,
+    turns: int | str = "auto",
     dataset_type: DatasetType = DatasetType.SFT,
     generation_model: OpenAI | Anthropic | Google | str = OpenAI.GPT_5_MINI,
     grading_model: OpenAI | Anthropic | Google | str = OpenAI.GPT_52,
@@ -131,6 +132,8 @@ def generate(
     Args:
         policy: Policy text or Policy object
         traces: Number of traces to generate (default: 20)
+        turns: Conversation turns per trace. Use int for fixed turns, or "auto"
+            for policy complexity-driven turns (Simple=1-2, Conditional=3, Complex=5+)
         dataset_type: Type of dataset - SFT (default) or QA
         generation_model: Model for generating (default: gpt-5-mini)
         grading_model: Model for grading (default: gpt-5.2)
@@ -145,7 +148,10 @@ def generate(
         >>> import synkro
         >>> dataset = synkro.generate("All expenses over $50 require approval")
         >>> dataset.save("training.jsonl")
-        
+
+        >>> # Multi-turn with fixed 3 turns
+        >>> dataset = synkro.generate(policy, turns=3)
+
         >>> # Silent mode
         >>> from synkro import SilentReporter
         >>> dataset = synkro.generate(policy, reporter=SilentReporter())
@@ -160,6 +166,7 @@ def generate(
         max_iterations=max_iterations,
         skip_grading=skip_grading,
         reporter=reporter,
+        turns=turns,
     )
 
     return generator.generate(policy, traces=traces)
