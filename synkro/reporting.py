@@ -9,7 +9,7 @@ Enhanced for Golden Trace pipeline with:
 - Per-trace category/type logging
 """
 
-from typing import Protocol, TYPE_CHECKING
+from typing import Protocol, TYPE_CHECKING, Callable
 
 from synkro.types.core import Plan, Scenario, Trace, GradeResult
 
@@ -264,62 +264,57 @@ class RichReporter:
             self.console.print(f"  [dim]Root rules: {', '.join(logic_map.root_rules)}[/dim]")
 
     def on_golden_scenarios_complete(self, scenarios, distribution) -> None:
-        """Display golden scenarios with type distribution (Stage 2)."""
+        """Display golden scenarios as a category × type matrix (Stage 2)."""
         from rich.table import Table
 
         self.console.print(f"\n[green]💡 Golden Scenarios[/green] [dim]{len(scenarios)} created[/dim]")
 
-        # Show distribution table
-        dist_table = Table(title="Scenario Type Distribution", show_header=True, header_style="bold cyan")
-        dist_table.add_column("Type", style="cyan")
-        dist_table.add_column("Count", justify="right")
-        dist_table.add_column("Percentage", justify="right")
-
-        total = sum(distribution.values())
-        type_colors = {
-            "positive": "green",
-            "negative": "red",
-            "edge_case": "yellow",
-            "irrelevant": "dim"
-        }
-        type_icons = {
-            "positive": "✓",
-            "negative": "✗",
-            "edge_case": "⚡",
-            "irrelevant": "○"
-        }
-
-        for stype, count in distribution.items():
-            pct = (count / total * 100) if total > 0 else 0
-            color = type_colors.get(stype, "white")
-            icon = type_icons.get(stype, "?")
-            dist_table.add_row(
-                f"[{color}]{icon} {stype}[/{color}]",
-                str(count),
-                f"{pct:.0f}%"
-            )
-
-        self.console.print(dist_table)
-
-        # Show sample scenarios by type
-        by_type = {}
+        # Build category × type matrix
+        matrix: dict[str, dict[str, int]] = {}
         for s in scenarios:
-            stype = s.scenario_type.value
-            by_type.setdefault(stype, []).append(s)
+            cat = s.category or "uncategorized"
+            stype = s.scenario_type.value if hasattr(s.scenario_type, 'value') else s.scenario_type
+            matrix.setdefault(cat, {"positive": 0, "negative": 0, "edge_case": 0, "irrelevant": 0})
+            matrix[cat][stype] += 1
 
-        for stype, type_scenarios in by_type.items():
-            color = type_colors.get(stype, "white")
-            icon = type_icons.get(stype, "?")
-            self.console.print(f"\n  [{color}]{icon} {stype.upper()}[/{color}]")
+        # Create the combined table
+        table = Table(title="Scenario Distribution", show_header=True, header_style="bold cyan")
+        table.add_column("Category", style="cyan")
+        table.add_column("[green]✓ Positive[/green]", justify="right")
+        table.add_column("[red]✗ Negative[/red]", justify="right")
+        table.add_column("[yellow]⚡ Edge[/yellow]", justify="right")
+        table.add_column("[dim]○ Irrelevant[/dim]", justify="right")
+        table.add_column("Total", justify="right", style="bold")
 
-            for s in type_scenarios[:2]:  # Show first 2 per type
-                desc = s.description[:60] + "..." if len(s.description) > 60 else s.description
-                rules = ", ".join(s.target_rule_ids[:3]) if s.target_rule_ids else "none"
-                self.console.print(f"    [yellow]{desc}[/yellow]")
-                self.console.print(f"    [dim]Rules: {rules} | Category: {s.category}[/dim]")
+        # Track column totals
+        totals = {"positive": 0, "negative": 0, "edge_case": 0, "irrelevant": 0}
 
-            if len(type_scenarios) > 2:
-                self.console.print(f"    [dim]... and {len(type_scenarios) - 2} more[/dim]")
+        for cat_name, counts in matrix.items():
+            row_total = sum(counts.values())
+            table.add_row(
+                cat_name,
+                str(counts["positive"]),
+                str(counts["negative"]),
+                str(counts["edge_case"]),
+                str(counts["irrelevant"]),
+                str(row_total),
+            )
+            for stype, count in counts.items():
+                totals[stype] += count
+
+        # Add totals row
+        grand_total = sum(totals.values())
+        table.add_section()
+        table.add_row(
+            "[bold]Total[/bold]",
+            f"[bold]{totals['positive']}[/bold]",
+            f"[bold]{totals['negative']}[/bold]",
+            f"[bold]{totals['edge_case']}[/bold]",
+            f"[bold]{totals['irrelevant']}[/bold]",
+            f"[bold]{grand_total}[/bold]",
+        )
+
+        self.console.print(table)
 
     def on_responses_complete(self, traces: list[Trace]) -> None:
         """Enhanced to show category and type for each trace."""
@@ -354,5 +349,128 @@ class RichReporter:
                 self.console.print(f"    [dim]... and {len(cat_traces) - 3} more[/dim]")
 
 
-__all__ = ["ProgressReporter", "SilentReporter", "RichReporter"]
+class CallbackReporter:
+    """
+    Reporter that invokes user-provided callbacks for progress events.
+
+    Use this when you need programmatic access to progress events
+    (e.g., updating a progress bar, logging to a file, etc.)
+
+    Examples:
+        >>> def on_progress(event: str, data: dict):
+        ...     print(f"{event}: {data}")
+        ...
+        >>> reporter = CallbackReporter(on_progress=on_progress)
+        >>> generator = Generator(reporter=reporter)
+
+        >>> # With specific event handlers
+        >>> reporter = CallbackReporter(
+        ...     on_start=lambda traces, model, dtype: print(f"Starting {traces} traces"),
+        ...     on_complete=lambda size, elapsed, rate: print(f"Done! {size} traces"),
+        ... )
+    """
+
+    def __init__(
+        self,
+        on_progress: "Callable[[str, dict], None] | None" = None,
+        on_start: "Callable[[int, str, str], None] | None" = None,
+        on_plan_complete: "Callable[[Plan], None] | None" = None,
+        on_scenario_progress: "Callable[[int, int], None] | None" = None,
+        on_scenarios_complete: "Callable[[list[Scenario]], None] | None" = None,
+        on_response_progress: "Callable[[int, int], None] | None" = None,
+        on_responses_complete: "Callable[[list[Trace]], None] | None" = None,
+        on_grading_progress: "Callable[[int, int], None] | None" = None,
+        on_grading_complete: "Callable[[list[Trace], float], None] | None" = None,
+        on_complete: "Callable[[int, float, float | None], None] | None" = None,
+    ):
+        """
+        Initialize the callback reporter.
+
+        Args:
+            on_progress: Generic callback for all events. Receives (event_name, data_dict).
+            on_start: Called when generation starts (traces, model, dataset_type)
+            on_plan_complete: Called when planning completes (plan)
+            on_scenario_progress: Called during scenario generation (completed, total)
+            on_scenarios_complete: Called when scenarios are done (scenarios list)
+            on_response_progress: Called during response generation (completed, total)
+            on_responses_complete: Called when responses are done (traces list)
+            on_grading_progress: Called during grading (completed, total)
+            on_grading_complete: Called when grading is done (traces, pass_rate)
+            on_complete: Called when generation completes (dataset_size, elapsed, pass_rate)
+        """
+        self._on_progress = on_progress
+        self._on_start = on_start
+        self._on_plan_complete = on_plan_complete
+        self._on_scenario_progress = on_scenario_progress
+        self._on_scenarios_complete = on_scenarios_complete
+        self._on_response_progress = on_response_progress
+        self._on_responses_complete = on_responses_complete
+        self._on_grading_progress = on_grading_progress
+        self._on_grading_complete = on_grading_complete
+        self._on_complete_cb = on_complete
+
+    def _emit(self, event: str, data: dict) -> None:
+        """Emit an event to the generic callback."""
+        if self._on_progress:
+            self._on_progress(event, data)
+
+    def on_start(self, traces: int, model: str, dataset_type: str) -> None:
+        self._emit("start", {"traces": traces, "model": model, "dataset_type": dataset_type})
+        if self._on_start:
+            self._on_start(traces, model, dataset_type)
+
+    def on_plan_complete(self, plan: Plan) -> None:
+        self._emit("plan_complete", {"categories": len(plan.categories)})
+        if self._on_plan_complete:
+            self._on_plan_complete(plan)
+
+    def on_scenario_progress(self, completed: int, total: int) -> None:
+        self._emit("scenario_progress", {"completed": completed, "total": total})
+        if self._on_scenario_progress:
+            self._on_scenario_progress(completed, total)
+
+    def on_scenarios_complete(self, scenarios: list[Scenario]) -> None:
+        self._emit("scenarios_complete", {"count": len(scenarios)})
+        if self._on_scenarios_complete:
+            self._on_scenarios_complete(scenarios)
+
+    def on_response_progress(self, completed: int, total: int) -> None:
+        self._emit("response_progress", {"completed": completed, "total": total})
+        if self._on_response_progress:
+            self._on_response_progress(completed, total)
+
+    def on_responses_complete(self, traces: list[Trace]) -> None:
+        self._emit("responses_complete", {"count": len(traces)})
+        if self._on_responses_complete:
+            self._on_responses_complete(traces)
+
+    def on_grading_progress(self, completed: int, total: int) -> None:
+        self._emit("grading_progress", {"completed": completed, "total": total})
+        if self._on_grading_progress:
+            self._on_grading_progress(completed, total)
+
+    def on_grading_complete(self, traces: list[Trace], pass_rate: float) -> None:
+        self._emit("grading_complete", {"count": len(traces), "pass_rate": pass_rate})
+        if self._on_grading_complete:
+            self._on_grading_complete(traces, pass_rate)
+
+    def on_refinement_start(self, iteration: int, failed_count: int) -> None:
+        self._emit("refinement_start", {"iteration": iteration, "failed_count": failed_count})
+
+    def on_grading_skipped(self) -> None:
+        self._emit("grading_skipped", {})
+
+    def on_complete(self, dataset_size: int, elapsed_seconds: float, pass_rate: float | None) -> None:
+        self._emit("complete", {"dataset_size": dataset_size, "elapsed_seconds": elapsed_seconds, "pass_rate": pass_rate})
+        if self._on_complete_cb:
+            self._on_complete_cb(dataset_size, elapsed_seconds, pass_rate)
+
+    def on_logic_map_complete(self, logic_map) -> None:
+        self._emit("logic_map_complete", {"rules_count": len(logic_map.rules)})
+
+    def on_golden_scenarios_complete(self, scenarios, distribution) -> None:
+        self._emit("golden_scenarios_complete", {"count": len(scenarios), "distribution": distribution})
+
+
+__all__ = ["ProgressReporter", "SilentReporter", "RichReporter", "CallbackReporter"]
 

@@ -2,6 +2,7 @@
 
 import asyncio
 from enum import Enum
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from synkro.llm.client import LLM
@@ -10,11 +11,12 @@ from synkro.models import Model, OpenAI
 from synkro.types.dataset_type import DatasetType
 from synkro.core.policy import Policy
 from synkro.core.dataset import Dataset
+from synkro.core.checkpoint import CheckpointManager, hash_policy
 from synkro.modes.config import get_mode_config
 from synkro.errors import handle_error
 from synkro.factory import ComponentFactory
 from synkro.reporting import ProgressReporter, RichReporter
-from synkro.pipeline.runner import GenerationPipeline
+from synkro.pipeline.runner import GenerationPipeline, GenerationResult
 
 if TYPE_CHECKING:
     from synkro.types.tool import ToolDefinition
@@ -61,6 +63,7 @@ class Generator:
         reporter: ProgressReporter | None = None,
         tools: list["ToolDefinition"] | None = None,
         turns: int | str = "auto",
+        checkpoint_dir: str | Path | None = None,
     ):
         """
         Initialize the Generator.
@@ -75,6 +78,8 @@ class Generator:
             tools: List of ToolDefinition for TOOL_CALL dataset type
             turns: Conversation turns per trace. Use int for fixed turns, or "auto"
                 for policy complexity-driven turns (Simple=1-2, Conditional=3, Complex=5+)
+            checkpoint_dir: Directory for checkpoints. If provided, enables resumable
+                generation. Progress is saved after each stage.
         """
         self.dataset_type = dataset_type
         self.mode_config = get_mode_config(dataset_type)
@@ -82,7 +87,13 @@ class Generator:
         self.skip_grading = skip_grading
         self.tools = tools
         self.turns = turns
-        
+        self.checkpoint_dir = Path(checkpoint_dir) if checkpoint_dir else None
+
+        # Create checkpoint manager if checkpointing enabled
+        self.checkpoint_manager = (
+            CheckpointManager(self.checkpoint_dir) if self.checkpoint_dir else None
+        )
+
         # Validate tools for TOOL_CALL dataset type
         if dataset_type == DatasetType.TOOL_CALL and not tools:
             raise ValueError("TOOL_CALL dataset type requires tools parameter")
@@ -117,19 +128,37 @@ class Generator:
             workers=self.workers,
             max_iterations=max_iterations,
             skip_grading=skip_grading,
+            checkpoint_manager=self.checkpoint_manager,
         )
 
     @handle_error
-    def generate(self, policy: Policy | str, traces: int = 20) -> Dataset:
+    def generate(
+        self,
+        policy: Policy | str,
+        traces: int = 20,
+        return_logic_map: bool = False,
+    ) -> Dataset | GenerationResult:
         """
         Generate a training dataset from a policy.
 
         Args:
             policy: Policy object or text string
             traces: Target number of traces to generate (default: 20)
+            return_logic_map: If True, return GenerationResult with access to
+                the Logic Map, scenarios, and distribution (default: False)
 
         Returns:
-            Dataset with generated traces
+            Dataset (default) or GenerationResult if return_logic_map=True
+
+        Examples:
+            >>> # Standard usage
+            >>> dataset = generator.generate(policy, traces=50)
+
+            >>> # Access Logic Map for inspection
+            >>> result = generator.generate(policy, return_logic_map=True)
+            >>> print(result.logic_map.rules)  # See extracted rules
+            >>> print(result.distribution)     # See scenario type counts
+            >>> dataset = result.dataset       # Get the dataset
         """
         if isinstance(policy, str):
             policy = Policy(text=policy)
@@ -137,9 +166,14 @@ class Generator:
         # Validate policy has enough content
         policy.validate_length()
 
-        return asyncio.run(self._generate_async(policy, traces))
+        return asyncio.run(self._generate_async(policy, traces, return_logic_map))
 
-    async def _generate_async(self, policy: Policy, traces: int) -> Dataset:
+    async def _generate_async(
+        self,
+        policy: Policy,
+        traces: int,
+        return_logic_map: bool = False,
+    ) -> Dataset | GenerationResult:
         """Async implementation of generation pipeline."""
         model_str = self.generation_model.value if isinstance(self.generation_model, Enum) else str(self.generation_model)
 
@@ -149,20 +183,27 @@ class Generator:
             model=model_str,
             dataset_type=self.dataset_type.value,
             turns=self.turns,
+            return_result=return_logic_map,
         )
 
-    async def generate_async(self, policy: Policy | str, traces: int = 20) -> Dataset:
+    async def generate_async(
+        self,
+        policy: Policy | str,
+        traces: int = 20,
+        return_logic_map: bool = False,
+    ) -> Dataset | GenerationResult:
         """
         Async version of generate for use in async contexts.
 
         Args:
             policy: Policy object or text string
             traces: Target number of traces to generate (default: 20)
+            return_logic_map: If True, return GenerationResult with Logic Map access
 
         Returns:
-            Dataset with generated traces
+            Dataset (default) or GenerationResult if return_logic_map=True
         """
         if isinstance(policy, str):
             policy = Policy(text=policy)
 
-        return await self._generate_async(policy, traces)
+        return await self._generate_async(policy, traces, return_logic_map)

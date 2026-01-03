@@ -12,6 +12,7 @@ from datetime import datetime
 
 from synkro.core.policy import Policy
 from synkro.core.dataset import Dataset
+from synkro.core.checkpoint import CheckpointManager, hash_policy
 from synkro.factory import ComponentFactory
 from synkro.reporting import ProgressReporter
 from synkro.pipeline.phases import (
@@ -22,6 +23,41 @@ from synkro.pipeline.phases import (
     GoldenToolCallPhase,
     VerificationPhase,
 )
+from synkro.types.logic_map import LogicMap
+
+
+class GenerationResult:
+    """
+    Result of the generation pipeline.
+
+    Provides access to both the dataset and internal artifacts like the Logic Map.
+
+    Examples:
+        >>> result = await pipeline.run(policy, traces=50, ...)
+        >>> dataset = result.dataset
+        >>> logic_map = result.logic_map  # Inspect extracted rules
+    """
+
+    def __init__(
+        self,
+        dataset: "Dataset",
+        logic_map: LogicMap | None = None,
+        scenarios: list | None = None,
+        distribution: dict[str, int] | None = None,
+    ):
+        self.dataset = dataset
+        self.logic_map = logic_map
+        self.scenarios = scenarios or []
+        self.distribution = distribution or {}
+
+    # Allow unpacking: dataset, logic_map = result
+    def __iter__(self):
+        return iter((self.dataset, self.logic_map))
+
+    # Allow direct Dataset access for backwards compatibility
+    def __getattr__(self, name):
+        # Delegate to dataset for backwards compatibility
+        return getattr(self.dataset, name)
 
 
 class GenerationPipeline:
@@ -46,6 +82,7 @@ class GenerationPipeline:
         workers: int,
         max_iterations: int = 1,
         skip_grading: bool = False,
+        checkpoint_manager: CheckpointManager | None = None,
     ):
         """
         Initialize the pipeline.
@@ -56,12 +93,14 @@ class GenerationPipeline:
             workers: Number of concurrent workers (API calls)
             max_iterations: Maximum refinement iterations
             skip_grading: Whether to skip the verification phase
+            checkpoint_manager: Optional checkpoint manager for resumable generation
         """
         self.factory = factory
         self.reporter = reporter
         self.workers = workers
         self.max_iterations = max_iterations
         self.skip_grading = skip_grading
+        self.checkpoint_manager = checkpoint_manager
 
         # Golden Trace phases
         self.plan_phase = PlanPhase()
@@ -78,7 +117,8 @@ class GenerationPipeline:
         model: str,
         dataset_type: str,
         turns: int | str = "auto",
-    ) -> Dataset:
+        return_result: bool = False,
+    ) -> Dataset | GenerationResult:
         """
         Run the Golden Trace generation pipeline.
 
@@ -92,15 +132,30 @@ class GenerationPipeline:
             dataset_type: Dataset type (sft, qa, tool_call)
             turns: Conversation turns per trace. Use int for fixed turns, or "auto"
                 for policy complexity-driven turns
+            return_result: If True, return GenerationResult with logic_map access
 
         Returns:
-            Dataset with generated traces in OpenAI messages format
+            Dataset (default) or GenerationResult if return_result=True
         """
         start_time = datetime.now()
         semaphore = asyncio.Semaphore(self.workers)
 
         # Check if this is a tool_call dataset
         is_tool_call = dataset_type == "tool_call"
+
+        # Checkpointing setup
+        cm = self.checkpoint_manager
+        policy_hash = hash_policy(policy.text) if cm else ""
+        resuming = False
+
+        # Check for existing checkpoint
+        if cm and cm.has_checkpoint():
+            if cm.matches_config(policy_hash, traces, dataset_type):
+                resuming = True
+                from rich.console import Console
+                Console().print(f"[cyan]🔄 Resuming from checkpoint (stage: {cm.stage})[/cyan]")
+            else:
+                cm.clear()  # Config mismatch, start fresh
 
         # Report start
         self.reporter.on_start(traces, model, dataset_type)
@@ -132,28 +187,79 @@ class GenerationPipeline:
         # =====================================================================
         # STAGE 1: Logic Extraction (The Cartographer)
         # =====================================================================
-        logic_map = await self.logic_extraction_phase.execute(policy, logic_extractor)
+        if resuming and cm and cm.stage in ("logic_map", "scenarios", "traces", "complete"):
+            logic_map = cm.get_logic_map()
+            from rich.console import Console
+            Console().print("[dim]📂 Loaded Logic Map from checkpoint[/dim]")
+        else:
+            logic_map = await self.logic_extraction_phase.execute(policy, logic_extractor)
+            if cm:
+                cm.save_logic_map(logic_map, policy_hash, traces, dataset_type)
+
         self.reporter.on_logic_map_complete(logic_map)
 
         # =====================================================================
         # STAGE 2: Scenario Synthesis (The Adversary)
         # =====================================================================
-        golden_scenarios, distribution = await self.golden_scenario_phase.execute(
-            policy, logic_map, plan, golden_scenario_gen, semaphore
-        )
+        if resuming and cm and cm.stage in ("scenarios", "traces", "complete"):
+            golden_scenarios = cm.get_scenarios()
+            distribution = cm.load().scenario_distribution
+            from rich.console import Console
+            Console().print(f"[dim]📂 Loaded {len(golden_scenarios)} scenarios from checkpoint[/dim]")
+        else:
+            golden_scenarios, distribution = await self.golden_scenario_phase.execute(
+                policy, logic_map, plan, golden_scenario_gen, semaphore
+            )
+            if cm:
+                cm.save_scenarios(golden_scenarios, distribution)
+
         self.reporter.on_golden_scenarios_complete(golden_scenarios, distribution)
 
         # =====================================================================
         # STAGE 3: Trace Synthesis (The Thinker)
         # =====================================================================
-        if is_tool_call and self.factory.has_tools:
-            all_traces = await self.golden_tool_call_phase.execute(
-                policy, logic_map, golden_scenarios, golden_tool_call_gen, semaphore, target_turns
-            )
+        if resuming and cm and cm.stage in ("traces", "complete"):
+            # Resume from checkpoint - get already completed traces
+            existing_traces = cm.get_traces()
+            pending_indices = cm.get_pending_scenario_indices(len(golden_scenarios))
+
+            if pending_indices:
+                from rich.console import Console
+                Console().print(f"[dim]📂 Resuming: {len(existing_traces)} done, {len(pending_indices)} pending[/dim]")
+
+                # Generate only pending scenarios
+                pending_scenarios = [golden_scenarios[i] for i in pending_indices]
+
+                if is_tool_call and self.factory.has_tools:
+                    new_traces = await self.golden_tool_call_phase.execute(
+                        policy, logic_map, pending_scenarios, golden_tool_call_gen, semaphore, target_turns
+                    )
+                else:
+                    new_traces = await self.golden_trace_phase.execute(
+                        policy, logic_map, pending_scenarios, golden_response_gen, semaphore, target_turns
+                    )
+
+                # Save new traces to checkpoint
+                if cm:
+                    cm.save_traces_batch(list(new_traces), pending_indices)
+
+                all_traces = existing_traces + list(new_traces)
+            else:
+                all_traces = existing_traces
         else:
-            all_traces = await self.golden_trace_phase.execute(
-                policy, logic_map, golden_scenarios, golden_response_gen, semaphore, target_turns
-            )
+            if is_tool_call and self.factory.has_tools:
+                all_traces = await self.golden_tool_call_phase.execute(
+                    policy, logic_map, golden_scenarios, golden_tool_call_gen, semaphore, target_turns
+                )
+            else:
+                all_traces = await self.golden_trace_phase.execute(
+                    policy, logic_map, golden_scenarios, golden_response_gen, semaphore, target_turns
+                )
+
+            # Save all traces to checkpoint
+            if cm:
+                cm.save_traces_batch(list(all_traces), list(range(len(all_traces))))
+
         self.reporter.on_responses_complete(list(all_traces))
 
         # =====================================================================
@@ -161,7 +267,13 @@ class GenerationPipeline:
         # =====================================================================
         pass_rate: float | None = None
 
-        if self.skip_grading:
+        if resuming and cm and cm.stage == "complete":
+            final_traces = cm.get_verified_traces()
+            passed_count = sum(1 for t in final_traces if t.grade and t.grade.passed)
+            pass_rate = (passed_count / len(final_traces) * 100) if final_traces else 0
+            from rich.console import Console
+            Console().print(f"[dim]📂 Loaded {len(final_traces)} verified traces from checkpoint[/dim]")
+        elif self.skip_grading:
             final_traces = list(all_traces)
             self.reporter.on_grading_skipped()
         else:
@@ -175,13 +287,26 @@ class GenerationPipeline:
                 self.max_iterations,
                 semaphore,
             )
+            if cm:
+                cm.save_verified_traces(final_traces)
+
             self.reporter.on_grading_complete(final_traces, pass_rate)
 
         # Report completion
         elapsed = (datetime.now() - start_time).total_seconds()
         self.reporter.on_complete(len(final_traces), elapsed, pass_rate)
 
-        return Dataset(traces=final_traces)
+        dataset = Dataset(traces=final_traces)
+
+        if return_result:
+            return GenerationResult(
+                dataset=dataset,
+                logic_map=logic_map,
+                scenarios=golden_scenarios,
+                distribution=distribution,
+            )
+
+        return dataset
 
 
-__all__ = ["GenerationPipeline"]
+__all__ = ["GenerationPipeline", "GenerationResult"]

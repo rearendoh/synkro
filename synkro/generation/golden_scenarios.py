@@ -183,7 +183,8 @@ class GoldenScenarioGenerator:
             )
             scenarios.append(scenario)
 
-        return scenarios
+        # Enforce requested count (LLM may return more or fewer)
+        return scenarios[:count]
 
     def _format_logic_map(self, logic_map: LogicMap) -> str:
         """Format Logic Map for prompt inclusion."""

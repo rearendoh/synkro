@@ -1,116 +1,108 @@
 """
 Synkro - Generate high-quality training datasets from any document.
 
-Modular Usage (recommended):
-    >>> from synkro.pipelines import create_pipeline
-    >>> from synkro.models.openai import OpenAI
-    >>> from synkro.types import DatasetType
-    >>>
-    >>> pipeline = create_pipeline(
-    ...     model=OpenAI.GPT_5_MINI,
-    ...     dataset_type=DatasetType.SFT,
-    ... )
-    >>> dataset = pipeline.generate("policy text", traces=50)
-    >>> dataset.save("training.jsonl")
-
-Simple Usage:
+Quick Start:
     >>> import synkro
     >>> dataset = synkro.generate("Your policy text...")
     >>> dataset.save("training.jsonl")
 
-Silent Mode (for embedding/testing):
+Pipeline Usage (more control):
+    >>> from synkro import create_pipeline, DatasetType
+    >>> pipeline = create_pipeline(dataset_type=DatasetType.SFT)
+    >>> dataset = pipeline.generate("policy text", traces=50)
+
+Access Logic Map (for inspection):
+    >>> result = pipeline.generate("policy text", return_logic_map=True)
+    >>> print(result.logic_map.rules)  # See extracted rules
+    >>> dataset = result.dataset
+
+Silent Mode:
     >>> from synkro import SilentReporter, create_pipeline
     >>> pipeline = create_pipeline(reporter=SilentReporter())
-    >>> dataset = pipeline.generate("policy text")  # No console output
+
+Progress Callbacks:
+    >>> from synkro import CallbackReporter, create_pipeline
+    >>> reporter = CallbackReporter(
+    ...     on_progress=lambda event, data: print(f"{event}: {data}")
+    ... )
+    >>> pipeline = create_pipeline(reporter=reporter)
 
 Tool Call Dataset:
     >>> from synkro import create_pipeline, ToolDefinition, DatasetType
-    >>> web_search = ToolDefinition(
-    ...     name="web_search",
-    ...     description="Search the web",
-    ...     parameters={"type": "object", "properties": {"query": {"type": "string"}}}
-    ... )
-    >>> pipeline = create_pipeline(
-    ...     dataset_type=DatasetType.TOOL_CALL,
-    ...     tools=[web_search],
-    ... )
-    >>> dataset = pipeline.generate("Search guidelines", traces=50)
+    >>> tools = [ToolDefinition(name="search", description="...", parameters={})]
+    >>> pipeline = create_pipeline(dataset_type=DatasetType.TOOL_CALL, tools=tools)
+
+Advanced Usage (power users):
+    >>> from synkro.advanced import LogicExtractor, TraceVerifier, LogicMap
+    >>> # Full access to Golden Trace internals
 """
+
+# Dynamic version from package metadata
+try:
+    from importlib.metadata import version as _get_version
+    __version__ = _get_version("synkro")
+except Exception:
+    __version__ = "0.4.6"  # Fallback
+
+# =============================================================================
+# PRIMARY API - What most developers need
+# =============================================================================
 
 from synkro.pipelines import create_pipeline
 from synkro.models import OpenAI, Anthropic, Google
-from synkro.types import DatasetType, Message, Scenario, Trace, GradeResult, Plan, Category
-from synkro.types import ToolDefinition, ToolCall, ToolFunction, ToolResult
+from synkro.types import DatasetType
 from synkro.core.policy import Policy
 from synkro.core.dataset import Dataset
-from synkro.llm.client import LLM
-from synkro.generation.generator import Generator
-from synkro.generation.scenarios import ScenarioGenerator
-from synkro.generation.responses import ResponseGenerator
-from synkro.generation.planner import Planner
-from synkro.quality.grader import Grader
-from synkro.quality.refiner import Refiner
-from synkro.quality.tool_grader import ToolCallGrader
-from synkro.quality.tool_refiner import ToolCallRefiner
-from synkro.formatters.sft import SFTFormatter
-from synkro.formatters.qa import QAFormatter
-from synkro.formatters.tool_call import ToolCallFormatter
-from synkro.prompts import SystemPrompt, ScenarioPrompt, ResponsePrompt, GradePrompt
-from synkro.reporting import ProgressReporter, RichReporter, SilentReporter
+from synkro.reporting import SilentReporter, RichReporter, CallbackReporter
 
-__version__ = "0.4.5"
+# Tool types (needed for TOOL_CALL dataset type)
+from synkro.types import ToolDefinition
+
+# =============================================================================
+# SECONDARY API - Less commonly needed
+# =============================================================================
+
+from synkro.types import Message, Scenario, Trace, GradeResult, Plan, Category
+from synkro.types import ToolCall, ToolFunction, ToolResult
+from synkro.reporting import ProgressReporter
+
+# GenerationResult for return_logic_map=True
+from synkro.pipeline.runner import GenerationResult
 
 __all__ = [
-    # Pipeline creation
+    # Primary API
     "create_pipeline",
-    # Quick function
     "generate",
-    # Dataset type enum
     "DatasetType",
-    # Core classes
     "Policy",
     "Dataset",
+    "ToolDefinition",
+    # Reporters
+    "SilentReporter",
+    "RichReporter",
+    "CallbackReporter",
+    "ProgressReporter",
+    # Models
+    "OpenAI",
+    "Anthropic",
+    "Google",
+    # Result types
+    "GenerationResult",
+    # Data types (less common)
     "Trace",
     "Scenario",
     "Message",
     "GradeResult",
     "Plan",
     "Category",
-    # Tool types
-    "ToolDefinition",
     "ToolCall",
     "ToolFunction",
     "ToolResult",
-    # Generation
-    "Generator",
-    "ScenarioGenerator",
-    "ResponseGenerator",
-    "Planner",
-    # Quality
-    "Grader",
-    "Refiner",
-    "ToolCallGrader",
-    "ToolCallRefiner",
-    # LLM
-    "LLM",
-    # Prompts
-    "SystemPrompt",
-    "ScenarioPrompt",
-    "ResponsePrompt",
-    "GradePrompt",
-    # Formatters
-    "SFTFormatter",
-    "QAFormatter",
-    "ToolCallFormatter",
-    # Reporters
-    "ProgressReporter",
-    "RichReporter",
-    "SilentReporter",
-    # Model enums (OpenAI, Anthropic, Google supported)
-    "OpenAI",
-    "Anthropic",
-    "Google",
 ]
+
+
+# Note: For advanced usage (LogicMap, TraceVerifier, etc.), use:
+# from synkro.advanced import ...
 
 
 def generate(
@@ -123,7 +115,8 @@ def generate(
     max_iterations: int = 3,
     skip_grading: bool = False,
     reporter: ProgressReporter | None = None,
-) -> Dataset:
+    return_logic_map: bool = False,
+) -> Dataset | GenerationResult:
     """
     Generate training traces from a policy document.
 
@@ -140,14 +133,20 @@ def generate(
         max_iterations: Max refinement iterations per trace (default: 3)
         skip_grading: Skip grading phase for faster generation (default: False)
         reporter: Progress reporter (default: RichReporter for console output)
+        return_logic_map: If True, return GenerationResult with Logic Map access
 
     Returns:
-        Dataset object with generated traces
+        Dataset (default) or GenerationResult if return_logic_map=True
 
     Example:
         >>> import synkro
         >>> dataset = synkro.generate("All expenses over $50 require approval")
         >>> dataset.save("training.jsonl")
+
+        >>> # Access Logic Map
+        >>> result = synkro.generate(policy, return_logic_map=True)
+        >>> print(result.logic_map.rules)
+        >>> dataset = result.dataset
 
         >>> # Multi-turn with fixed 3 turns
         >>> dataset = synkro.generate(policy, turns=3)
@@ -156,6 +155,8 @@ def generate(
         >>> from synkro import SilentReporter
         >>> dataset = synkro.generate(policy, reporter=SilentReporter())
     """
+    from synkro.generation.generator import Generator
+
     if isinstance(policy, str):
         policy = Policy(text=policy)
 
@@ -169,4 +170,4 @@ def generate(
         turns=turns,
     )
 
-    return generator.generate(policy, traces=traces)
+    return generator.generate(policy, traces=traces, return_logic_map=return_logic_map)

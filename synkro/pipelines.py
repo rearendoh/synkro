@@ -47,6 +47,7 @@ def create_pipeline(
     reporter: ProgressReporter | None = None,
     tools: list["ToolDefinition"] | None = None,
     turns: int | str = "auto",
+    checkpoint_dir: str | None = None,
 ) -> Generator:
     """
     Create a pipeline for generating training datasets.
@@ -61,6 +62,7 @@ def create_pipeline(
         tools: List of ToolDefinition for TOOL_CALL dataset type
         turns: Conversation turns per trace. Use int for fixed turns, or "auto"
             for policy complexity-driven turns (Simple=1-2, Conditional=3, Complex=5+)
+        checkpoint_dir: Directory for checkpoints. Enables resumable generation.
 
     Returns:
         Generator instance ready to use
@@ -107,6 +109,7 @@ def create_pipeline(
         reporter=reporter,
         tools=tools,
         turns=turns,
+        checkpoint_dir=checkpoint_dir,
     )
 
 

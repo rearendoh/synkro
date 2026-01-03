@@ -83,6 +83,121 @@ class Dataset(BaseModel):
 
         return Dataset(traces=filtered)
 
+    def dedupe(
+        self,
+        threshold: float = 0.85,
+        method: str = "semantic",
+        field: str = "user",
+    ) -> "Dataset":
+        """
+        Remove duplicate or near-duplicate traces.
+
+        Args:
+            threshold: Similarity threshold (0-1). Higher = stricter dedup.
+                       Only used for semantic method. (default: 0.85)
+            method: Deduplication method:
+                    - "exact": Remove exact text duplicates (fast)
+                    - "semantic": Remove semantically similar traces (requires sentence-transformers)
+            field: Which field to dedupe on - "user", "assistant", or "both"
+
+        Returns:
+            New Dataset with duplicates removed
+
+        Examples:
+            >>> # Remove exact duplicates (fast)
+            >>> deduped = dataset.dedupe(method="exact")
+
+            >>> # Remove semantically similar (needs sentence-transformers)
+            >>> deduped = dataset.dedupe(threshold=0.9, method="semantic")
+
+            >>> # Dedupe based on assistant responses
+            >>> deduped = dataset.dedupe(field="assistant")
+        """
+        if not self.traces:
+            return Dataset(traces=[])
+
+        if method == "exact":
+            return self._dedupe_exact(field)
+        elif method == "semantic":
+            return self._dedupe_semantic(threshold, field)
+        else:
+            raise ValueError(f"Unknown method: {method}. Use 'exact' or 'semantic'")
+
+    def _dedupe_exact(self, field: str) -> "Dataset":
+        """Remove exact text duplicates."""
+        seen = set()
+        unique_traces = []
+
+        for trace in self.traces:
+            if field == "user":
+                key = trace.user_message
+            elif field == "assistant":
+                key = trace.assistant_message
+            else:  # both
+                key = (trace.user_message, trace.assistant_message)
+
+            if key not in seen:
+                seen.add(key)
+                unique_traces.append(trace)
+
+        removed = len(self.traces) - len(unique_traces)
+        if removed > 0:
+            console.print(f"[yellow]🔍 Dedupe:[/yellow] Removed {removed} exact duplicates")
+
+        return Dataset(traces=unique_traces)
+
+    def _dedupe_semantic(self, threshold: float, field: str) -> "Dataset":
+        """Remove semantically similar traces using embeddings."""
+        try:
+            from sentence_transformers import SentenceTransformer
+            import numpy as np
+        except ImportError:
+            raise ImportError(
+                "sentence-transformers is required for semantic deduplication. "
+                "Install with: pip install sentence-transformers"
+            )
+
+        # Get texts to embed
+        if field == "user":
+            texts = [t.user_message for t in self.traces]
+        elif field == "assistant":
+            texts = [t.assistant_message for t in self.traces]
+        else:  # both
+            texts = [f"{t.user_message} {t.assistant_message}" for t in self.traces]
+
+        # Compute embeddings
+        console.print("[dim]Computing embeddings for deduplication...[/dim]")
+        model = SentenceTransformer("all-MiniLM-L6-v2")
+        embeddings = model.encode(texts, show_progress_bar=False)
+        embeddings = np.array(embeddings)
+
+        # Normalize for cosine similarity
+        norms = np.linalg.norm(embeddings, axis=1, keepdims=True)
+        embeddings = embeddings / norms
+
+        # Find duplicates using cosine similarity
+        unique_indices = []
+        duplicate_of = {}  # Maps duplicate index to original index
+
+        for i in range(len(embeddings)):
+            is_duplicate = False
+            for j in unique_indices:
+                similarity = np.dot(embeddings[i], embeddings[j])
+                if similarity >= threshold:
+                    is_duplicate = True
+                    duplicate_of[i] = j
+                    break
+            if not is_duplicate:
+                unique_indices.append(i)
+
+        unique_traces = [self.traces[i] for i in unique_indices]
+        removed = len(self.traces) - len(unique_traces)
+
+        if removed > 0:
+            console.print(f"[yellow]🔍 Dedupe:[/yellow] Removed {removed} semantic duplicates (threshold={threshold})")
+
+        return Dataset(traces=unique_traces)
+
     @property
     def passing_rate(self) -> float:
         """Get the percentage of traces that passed grading."""
@@ -160,30 +275,84 @@ class Dataset(BaseModel):
         else:
             raise ValueError(f"Unknown format: {format}. Use 'sft', 'qa', or 'tool_call'")
 
-    def to_huggingface(self):
+    def to_hf_dataset(self, format: str = "sft"):
         """
         Convert to HuggingFace Dataset.
 
+        Args:
+            format: Output format - "sft", "qa", or "tool_call"
+
         Returns:
-            HuggingFace Dataset object
+            HuggingFace datasets.Dataset object
 
         Example:
-            >>> hf_dataset = dataset.to_huggingface()
+            >>> hf_dataset = dataset.to_hf_dataset()
             >>> hf_dataset.push_to_hub("my-org/policy-traces")
+
+            >>> # With train/test split
+            >>> hf_dataset = dataset.to_hf_dataset()
+            >>> split = hf_dataset.train_test_split(test_size=0.1)
+            >>> split.push_to_hub("my-org/policy-traces")
         """
         try:
             from datasets import Dataset as HFDataset
-
-            # Convert to SFT format for HF
-            from synkro.formatters import SFTFormatter
-
-            examples = SFTFormatter(include_metadata=True).format(self.traces)
-            return HFDataset.from_list(examples)
         except ImportError:
             raise ImportError(
                 "datasets is required for HuggingFace export. "
                 "Install with: pip install datasets"
             )
+
+        from synkro.formatters import SFTFormatter, QAFormatter, ToolCallFormatter
+
+        if format == "sft":
+            examples = SFTFormatter(include_metadata=True).format(self.traces)
+        elif format == "qa":
+            examples = QAFormatter().format(self.traces)
+        elif format == "tool_call":
+            examples = ToolCallFormatter().format(self.traces)
+        else:
+            raise ValueError(f"Unknown format: {format}")
+
+        return HFDataset.from_list(examples)
+
+    # Alias for backwards compatibility
+    to_huggingface = to_hf_dataset
+
+    def push_to_hub(
+        self,
+        repo_id: str,
+        format: str = "sft",
+        private: bool = False,
+        split: str = "train",
+        token: str | None = None,
+    ) -> str:
+        """
+        Push dataset directly to HuggingFace Hub.
+
+        Args:
+            repo_id: HuggingFace repo ID (e.g., "my-org/policy-sft")
+            format: Output format - "sft", "qa", or "tool_call"
+            private: Whether the repo should be private
+            split: Dataset split name (default: "train")
+            token: HuggingFace token (uses cached token if not provided)
+
+        Returns:
+            URL of the uploaded dataset
+
+        Example:
+            >>> dataset.push_to_hub("my-org/policy-sft")
+            >>> dataset.push_to_hub("my-org/policy-sft", private=True)
+        """
+        hf_dataset = self.to_hf_dataset(format=format)
+        hf_dataset.push_to_hub(
+            repo_id,
+            private=private,
+            split=split,
+            token=token,
+        )
+        url = f"https://huggingface.co/datasets/{repo_id}"
+        console.print(f"[green]🤗 Pushed to Hub:[/green] {url}")
+        return url
 
     def to_dict(self) -> dict:
         """

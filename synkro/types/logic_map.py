@@ -4,7 +4,9 @@ The Logic Map represents a policy as a directed acyclic graph (DAG) of rules,
 enabling grounded reasoning and verification of generated traces.
 """
 
+import json
 from enum import Enum
+from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel, Field
@@ -192,6 +194,42 @@ class LogicMap(BaseModel):
                 processed.update(r.rule_id for r in self.get_chain(rule.rule_id))
 
         return "\n".join(lines)
+
+    def save(self, path: str | Path) -> None:
+        """
+        Save the Logic Map to a JSON file.
+
+        Args:
+            path: File path to save to (e.g., "logic_map.json")
+
+        Examples:
+            >>> logic_map.save("logic_map.json")
+            >>> # Later, reload it
+            >>> logic_map = LogicMap.load("logic_map.json")
+        """
+        path = Path(path)
+        with open(path, "w") as f:
+            json.dump(self.model_dump(), f, indent=2)
+
+    @classmethod
+    def load(cls, path: str | Path) -> "LogicMap":
+        """
+        Load a Logic Map from a JSON file.
+
+        Args:
+            path: File path to load from
+
+        Returns:
+            LogicMap instance
+
+        Examples:
+            >>> logic_map = LogicMap.load("logic_map.json")
+            >>> print(f"Loaded {len(logic_map.rules)} rules")
+        """
+        path = Path(path)
+        with open(path) as f:
+            data = json.load(f)
+        return cls.model_validate(data)
 
 
 class ReasoningStep(BaseModel):
