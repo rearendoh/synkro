@@ -55,8 +55,9 @@ class LogicMapDisplay:
         )
 
     def display_diff(self, before: "LogicMap", after: "LogicMap") -> None:
-        """Display what changed between two Logic Maps."""
-        from rich.table import Table
+        """Display all rules with changes highlighted in different colors."""
+        from rich.panel import Panel
+        from rich.tree import Tree
 
         before_ids = {r.rule_id for r in before.rules}
         after_ids = {r.rule_id for r in after.rules}
@@ -66,50 +67,73 @@ class LogicMapDisplay:
         common = before_ids & after_ids
 
         # Check for modifications in common rules
-        modified = []
+        modified: set[str] = set()
         before_map = {r.rule_id: r for r in before.rules}
         after_map = {r.rule_id: r for r in after.rules}
 
         for rule_id in common:
             if before_map[rule_id].text != after_map[rule_id].text:
-                modified.append(rule_id)
+                modified.add(rule_id)
             elif before_map[rule_id].dependencies != after_map[rule_id].dependencies:
-                modified.append(rule_id)
+                modified.add(rule_id)
 
         if not added and not removed and not modified:
             self.console.print("[dim]No changes detected[/dim]")
             return
 
-        table = Table(title="Changes", show_header=True, header_style="bold")
-        table.add_column("Type", style="bold")
-        table.add_column("Rule ID")
-        table.add_column("Details")
+        # Build tree view of rules by category (like display_full but with colors)
+        tree = Tree("[bold cyan]Logic Map[/bold cyan]")
 
-        for rule_id in added:
-            rule = after_map[rule_id]
-            table.add_row(
-                "[green]+ Added[/green]",
-                f"[cyan]{rule_id}[/cyan]",
-                f"{rule.text[:50]}...",
-            )
+        # Group rules by category
+        categories: dict[str, list] = {}
+        for rule in after.rules:
+            cat = rule.category.value if hasattr(rule.category, "value") else str(rule.category)
+            if cat not in categories:
+                categories[cat] = []
+            categories[cat].append(rule)
 
-        for rule_id in removed:
-            rule = before_map[rule_id]
-            table.add_row(
-                "[red]- Removed[/red]",
-                f"[cyan]{rule_id}[/cyan]",
-                f"{rule.text[:50]}...",
-            )
+        # Add each category as a branch
+        for category, rules in sorted(categories.items()):
+            branch = tree.add(f"[bold]{category}[/bold] ({len(rules)} rules)")
+            for rule in rules:
+                # Determine style based on change type
+                if rule.rule_id in added:
+                    prefix = "[green]+ "
+                    style_close = "[/green]"
+                    id_style = "[green]"
+                elif rule.rule_id in modified:
+                    prefix = "[yellow]~ "
+                    style_close = "[/yellow]"
+                    id_style = "[yellow]"
+                else:
+                    prefix = ""
+                    style_close = ""
+                    id_style = "[cyan]"
 
-        for rule_id in modified:
-            table.add_row(
-                "[yellow]~ Modified[/yellow]",
-                f"[cyan]{rule_id}[/cyan]",
-                f"{after_map[rule_id].text[:50]}...",
-            )
+                rule_text = f"{prefix}{id_style}{rule.rule_id}[/]: {rule.text[:60]}...{style_close}"
+                if rule.dependencies:
+                    rule_text += f" [dim]→ {', '.join(rule.dependencies)}[/dim]"
+                branch.add(rule_text)
+
+        # Add removed rules section at the bottom
+        if removed:
+            removed_branch = tree.add("[red][bold]REMOVED[/bold][/red]")
+            for rule_id in sorted(removed):
+                rule = before_map[rule_id]
+                removed_branch.add(f"[red][strike]- {rule_id}: {rule.text[:60]}...[/strike][/red]")
+
+        # Build legend
+        legend = "[dim]Legend: [green]+ Added[/green] | [yellow]~ Modified[/yellow] | [red][strike]- Removed[/strike][/red][/dim]"
 
         self.console.print()
-        self.console.print(table)
+        self.console.print(
+            Panel(
+                tree,
+                title=f"[bold]📜 Logic Map ({len(after.rules)} rules)[/bold]",
+                subtitle=legend,
+                border_style="cyan",
+            )
+        )
 
     def display_rule(self, rule_id: str, logic_map: "LogicMap") -> None:
         """Display details of a specific rule."""
