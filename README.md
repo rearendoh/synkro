@@ -179,6 +179,9 @@ synkro generate "All expenses over $50 need approval" -n 20
 
 # From URL
 synkro generate https://example.com/policy -o training.jsonl
+
+# Skip interactive mode
+synkro generate policy.pdf --no-interactive
 ```
 
 **Options:**
@@ -186,3 +189,37 @@ synkro generate https://example.com/policy -o training.jsonl
 - `--format, -f` - Output format: sft, qa, or tool_call (default: sft)
 - `--output, -o` - Output file path
 - `--model, -m` - Model for generation
+- `--interactive/-i, --no-interactive/-I` - Review/edit extracted rules before generation (default: on)
+
+## Interactive Mode
+
+By default, synkro extracts policy rules into a Logic Map and lets you review/edit them before generation:
+
+```
+📜 Logic Map (3 rules extracted)
+├── R001: Expenses over $50 require manager approval
+├── R002: Client meals limited to $75/person
+└── R003: Receipts required for all expenses
+
+Enter feedback (or 'done'): Add a rule for travel expenses over $500
+✓ Added R004: Travel expenses over $500 require VP approval
+
+Enter feedback (or 'done'): done
+```
+
+Commands: `done`, `undo`, `reset`, `show R001`
+
+## Logic Map Inspection
+
+Access the extracted rules programmatically:
+
+```python
+result = pipeline.generate(policy, traces=50, return_logic_map=True)
+
+# Inspect extracted rules
+for rule in result.logic_map.rules:
+    print(f"{rule.rule_id}: {rule.text}")
+
+# Get the dataset
+dataset = result.dataset
+```

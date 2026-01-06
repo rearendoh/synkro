@@ -115,9 +115,26 @@ class GoldenResponseGenerator:
         # Convert GoldenScenario to base Scenario for Trace
         base_scenario = scenario.to_base_scenario()
 
+        # Convert reasoning chain to serializable format
+        reasoning_chain = None
+        if result.reasoning_chain:
+            reasoning_chain = [
+                {
+                    "rule_id": step.rule_id,
+                    "rule_text": step.rule_text,
+                    "applies": step.applies,
+                    "reasoning": step.reasoning,
+                    "exclusions": step.exclusions,
+                }
+                for step in result.reasoning_chain
+            ]
+
         return Trace(
             messages=messages,
             scenario=base_scenario,
+            reasoning_chain=reasoning_chain,
+            rules_applied=result.rules_applied,
+            rules_excluded=result.rules_excluded,
         )
 
     async def _generate_multi_turn(
@@ -154,9 +171,26 @@ class GoldenResponseGenerator:
         # Convert GoldenScenario to base Scenario for Trace
         base_scenario = scenario.to_base_scenario()
 
+        # Convert reasoning chain to serializable format
+        reasoning_chain = None
+        if result.reasoning_chain:
+            reasoning_chain = [
+                {
+                    "rule_id": step.rule_id,
+                    "rule_text": step.rule_text,
+                    "applies": step.applies,
+                    "reasoning": step.reasoning,
+                    "exclusions": step.exclusions,
+                }
+                for step in result.reasoning_chain
+            ]
+
         return Trace(
             messages=messages,
             scenario=base_scenario,
+            reasoning_chain=reasoning_chain,
+            rules_applied=result.rules_applied,
+            rules_excluded=result.rules_excluded,
         )
 
     def _format_logic_map(self, logic_map: LogicMap) -> str:

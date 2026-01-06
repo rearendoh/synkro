@@ -130,15 +130,33 @@ class GoldenScenarioGenerator:
         counts = {}
         remaining = total
 
-        # Allocate based on distribution percentages
-        for i, (stype, ratio) in enumerate(self.distribution.items()):
-            if i == len(self.distribution) - 1:
-                # Last type gets remaining to ensure total is exact
-                counts[stype] = remaining
-            else:
-                count = round(total * ratio)
-                counts[stype] = count
-                remaining -= count
+        # For small counts, prioritize non-IRRELEVANT types
+        # IRRELEVANT should only appear when we have enough scenarios
+        priority_order = [
+            ScenarioType.POSITIVE,
+            ScenarioType.NEGATIVE,
+            ScenarioType.EDGE_CASE,
+            ScenarioType.IRRELEVANT,  # Last priority
+        ]
+
+        if total <= 3:
+            # For very small counts, assign one to each priority type until exhausted
+            for stype in priority_order:
+                if remaining > 0:
+                    counts[stype] = 1
+                    remaining -= 1
+                else:
+                    counts[stype] = 0
+        else:
+            # Normal distribution for larger counts
+            for i, (stype, ratio) in enumerate(self.distribution.items()):
+                if i == len(self.distribution) - 1:
+                    # Last type gets remaining to ensure total is exact
+                    counts[stype] = remaining
+                else:
+                    count = round(total * ratio)
+                    counts[stype] = count
+                    remaining -= count
 
         return counts
 

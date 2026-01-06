@@ -372,6 +372,23 @@ class LogicMapOutput(BaseModel):
     )
 
 
+class RefinedLogicMapOutput(BaseModel):
+    """Output schema for Logic Map refinement based on user feedback."""
+
+    rules: list[RuleExtraction] = Field(
+        description="All rules in the refined Logic Map (modified and unmodified)"
+    )
+    root_rules: list[str] = Field(
+        description="Rule IDs with no dependencies (entry points)"
+    )
+    changes_summary: str = Field(
+        description="Brief summary of changes made (e.g., 'Added R009, removed R005')"
+    )
+    reasoning: str = Field(
+        description="Explanation of how user feedback was interpreted and applied"
+    )
+
+
 class GoldenScenarioOutput(BaseModel):
     """Output schema for a single golden scenario."""
 

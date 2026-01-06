@@ -37,6 +37,11 @@ def generate(
         "--model", "-m",
         help="Model for generation (e.g., gpt-4o-mini, claude-3-5-sonnet, gemini-2.5-flash)",
     ),
+    interactive: bool = typer.Option(
+        True,
+        "--interactive/--no-interactive", "-i/-I",
+        help="Enable interactive Logic Map editing before generation (enabled by default)",
+    ),
 ):
     """
     Generate training data from a policy document.
@@ -50,6 +55,8 @@ def generate(
         synkro generate "All expenses over $50 need approval" --traces 50
 
         synkro generate handbook.docx -o training.jsonl -n 100
+
+        synkro generate policy.pdf --interactive  # Review and edit Logic Map
     """
     import synkro
     from synkro import Policy
@@ -72,6 +79,7 @@ def generate(
         policy,
         traces=traces,
         generation_model=model,
+        enable_hitl=interactive,
     )
 
     # Save

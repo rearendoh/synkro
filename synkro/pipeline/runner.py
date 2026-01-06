@@ -25,6 +25,11 @@ from synkro.pipeline.phases import (
 )
 from synkro.types.logic_map import LogicMap
 
+# Type hints for HITL components (imported dynamically to avoid circular imports)
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from synkro.interactive.logic_map_editor import LogicMapEditor
+
 
 class GenerationResult:
     """
@@ -83,6 +88,8 @@ class GenerationPipeline:
         max_iterations: int = 1,
         skip_grading: bool = False,
         checkpoint_manager: CheckpointManager | None = None,
+        enable_hitl: bool = False,
+        hitl_editor: "LogicMapEditor | None" = None,
     ):
         """
         Initialize the pipeline.
@@ -94,6 +101,8 @@ class GenerationPipeline:
             max_iterations: Maximum refinement iterations
             skip_grading: Whether to skip the verification phase
             checkpoint_manager: Optional checkpoint manager for resumable generation
+            enable_hitl: Whether to enable Human-in-the-Loop Logic Map editing
+            hitl_editor: Optional LogicMapEditor for HITL sessions
         """
         self.factory = factory
         self.reporter = reporter
@@ -101,6 +110,8 @@ class GenerationPipeline:
         self.max_iterations = max_iterations
         self.skip_grading = skip_grading
         self.checkpoint_manager = checkpoint_manager
+        self.enable_hitl = enable_hitl
+        self.hitl_editor = hitl_editor
 
         # Golden Trace phases
         self.plan_phase = PlanPhase()
@@ -197,6 +208,12 @@ class GenerationPipeline:
                 cm.save_logic_map(logic_map, policy_hash, traces, dataset_type)
 
         self.reporter.on_logic_map_complete(logic_map)
+
+        # =====================================================================
+        # HUMAN-IN-THE-LOOP: Logic Map Editing (Optional)
+        # =====================================================================
+        if self.enable_hitl and self.hitl_editor:
+            logic_map = await self._run_hitl_session(logic_map, policy)
 
         # =====================================================================
         # STAGE 2: Scenario Synthesis (The Adversary)
@@ -307,6 +324,101 @@ class GenerationPipeline:
             )
 
         return dataset
+
+    async def _run_hitl_session(self, logic_map: LogicMap, policy: Policy) -> LogicMap:
+        """
+        Run an interactive Human-in-the-Loop session for Logic Map editing.
+
+        Args:
+            logic_map: The extracted Logic Map to edit
+            policy: The policy document (for context in refinements)
+
+        Returns:
+            The (potentially modified) Logic Map
+        """
+        from synkro.interactive.hitl_session import HITLSession
+        from synkro.interactive.rich_ui import LogicMapDisplay, InteractivePrompt
+
+        session = HITLSession(original_logic_map=logic_map)
+        display = LogicMapDisplay()
+        prompt = InteractivePrompt()
+
+        # Show instructions and initial Logic Map
+        prompt.show_instructions()
+        display.display_full(session.current_logic_map)
+
+        while True:
+            feedback = prompt.get_feedback().strip()
+
+            # Handle commands
+            if feedback.lower() == "done":
+                break
+
+            if feedback.lower() == "undo":
+                if session.can_undo:
+                    session.undo()
+                    display.show_success("Reverted to previous state")
+                    display.display_full(session.current_logic_map)
+                else:
+                    display.show_error("Nothing to undo")
+                continue
+
+            if feedback.lower() == "reset":
+                session.reset()
+                display.show_success("Reset to original Logic Map")
+                display.display_full(session.current_logic_map)
+                continue
+
+            if feedback.lower() == "help":
+                prompt.show_instructions()
+                continue
+
+            if feedback.lower().startswith("show "):
+                rule_id = feedback[5:].strip().upper()
+                display.display_rule(rule_id, session.current_logic_map)
+                continue
+
+            # Empty input
+            if not feedback:
+                continue
+
+            # Apply LLM-based refinement
+            try:
+                new_map, changes_summary = await self.hitl_editor.refine(
+                    session.current_logic_map,
+                    feedback,
+                    policy.text,
+                )
+
+                # Validate the refinement
+                is_valid, issues = self.hitl_editor.validate_refinement(
+                    session.current_logic_map,
+                    new_map,
+                )
+
+                if is_valid:
+                    display.display_diff(session.current_logic_map, new_map)
+                    session.apply_change(feedback, new_map)
+                    display.show_success(changes_summary)
+                else:
+                    display.show_error(f"Invalid refinement: {', '.join(issues)}")
+
+            except Exception as e:
+                display.show_error(f"Failed to apply refinement: {e}")
+
+        # Final summary
+        if session.change_count > 0:
+            display.console.print(
+                f"\n[green]✅ HITL Complete[/green] - "
+                f"Made {session.change_count} change(s), proceeding with {len(session.current_logic_map.rules)} rules"
+            )
+        else:
+            display.console.print(
+                f"\n[green]✅ HITL Complete[/green] - "
+                f"No changes made, proceeding with {len(session.current_logic_map.rules)} rules"
+            )
+
+        return session.current_logic_map
 
 
 __all__ = ["GenerationPipeline", "GenerationResult"]

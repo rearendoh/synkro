@@ -64,6 +64,7 @@ class Generator:
         tools: list["ToolDefinition"] | None = None,
         turns: int | str = "auto",
         checkpoint_dir: str | Path | None = None,
+        enable_hitl: bool = True,
     ):
         """
         Initialize the Generator.
@@ -80,6 +81,8 @@ class Generator:
                 for policy complexity-driven turns (Simple=1-2, Conditional=3, Complex=5+)
             checkpoint_dir: Directory for checkpoints. If provided, enables resumable
                 generation. Progress is saved after each stage.
+            enable_hitl: Enable Human-in-the-Loop Logic Map editing. When enabled,
+                pauses after Logic Map extraction to allow interactive refinement.
         """
         self.dataset_type = dataset_type
         self.mode_config = get_mode_config(dataset_type)
@@ -93,6 +96,9 @@ class Generator:
         self.checkpoint_manager = (
             CheckpointManager(self.checkpoint_dir) if self.checkpoint_dir else None
         )
+
+        # HITL configuration
+        self.enable_hitl = enable_hitl
 
         # Validate tools for TOOL_CALL dataset type
         if dataset_type == DatasetType.TOOL_CALL and not tools:
@@ -121,6 +127,9 @@ class Generator:
         model_str = generation_model.value if isinstance(generation_model, Enum) else str(generation_model)
         self.workers = auto_workers(model_str)
 
+        # Create HITL editor if enabled
+        hitl_editor = self.factory.create_logic_map_editor() if enable_hitl else None
+
         # Create pipeline
         self.pipeline = GenerationPipeline(
             factory=self.factory,
@@ -129,6 +138,8 @@ class Generator:
             max_iterations=max_iterations,
             skip_grading=skip_grading,
             checkpoint_manager=self.checkpoint_manager,
+            enable_hitl=enable_hitl,
+            hitl_editor=hitl_editor,
         )
 
     @handle_error

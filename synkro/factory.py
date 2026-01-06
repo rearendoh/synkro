@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from synkro.generation.golden_tool_responses import GoldenToolCallResponseGenerator
     from synkro.quality.verifier import TraceVerifier
     from synkro.quality.golden_refiner import GoldenRefiner
+    from synkro.interactive.logic_map_editor import LogicMapEditor
 
 
 class ComponentFactory:
@@ -259,6 +260,16 @@ class ComponentFactory:
         """
         from synkro.quality.golden_refiner import GoldenRefiner
         return GoldenRefiner(llm=self.generation_llm)
+
+    def create_logic_map_editor(self) -> "LogicMapEditor":
+        """
+        Create a LogicMapEditor for Human-in-the-Loop sessions.
+
+        The editor uses the grading LLM (stronger model) to interpret
+        natural language feedback and refine Logic Maps.
+        """
+        from synkro.interactive.logic_map_editor import LogicMapEditor
+        return LogicMapEditor(llm=self.grading_llm)
 
 
 __all__ = ["ComponentFactory"]

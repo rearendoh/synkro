@@ -48,6 +48,7 @@ def create_pipeline(
     tools: list["ToolDefinition"] | None = None,
     turns: int | str = "auto",
     checkpoint_dir: str | None = None,
+    enable_hitl: bool = True,
 ) -> Generator:
     """
     Create a pipeline for generating training datasets.
@@ -63,6 +64,7 @@ def create_pipeline(
         turns: Conversation turns per trace. Use int for fixed turns, or "auto"
             for policy complexity-driven turns (Simple=1-2, Conditional=3, Complex=5+)
         checkpoint_dir: Directory for checkpoints. Enables resumable generation.
+        enable_hitl: Enable Human-in-the-Loop Logic Map editing (default: False)
 
     Returns:
         Generator instance ready to use
@@ -87,6 +89,10 @@ def create_pipeline(
         >>> from synkro.reporting import SilentReporter
         >>> pipeline = create_pipeline(reporter=SilentReporter())
 
+        >>> # Interactive Logic Map editing
+        >>> pipeline = create_pipeline(enable_hitl=True)
+        >>> dataset = pipeline.generate("policy text", traces=50)
+
         >>> # Tool calling dataset
         >>> from synkro import ToolDefinition
         >>> search_tool = ToolDefinition(
@@ -110,6 +116,7 @@ def create_pipeline(
         tools=tools,
         turns=turns,
         checkpoint_dir=checkpoint_dir,
+        enable_hitl=enable_hitl,
     )
 
 

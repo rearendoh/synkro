@@ -85,6 +85,18 @@ class ProgressReporter(Protocol):
         """Called when golden scenarios are generated (Stage 2)."""
         ...
 
+    def on_hitl_start(self, rules_count: int) -> None:
+        """Called when HITL session starts."""
+        ...
+
+    def on_hitl_refinement(self, feedback: str, changes_summary: str) -> None:
+        """Called after each HITL refinement."""
+        ...
+
+    def on_hitl_complete(self, change_count: int, final_rules_count: int) -> None:
+        """Called when HITL session completes."""
+        ...
+
 
 class SilentReporter:
     """
@@ -134,6 +146,15 @@ class SilentReporter:
         pass
 
     def on_golden_scenarios_complete(self, scenarios, distribution) -> None:
+        pass
+
+    def on_hitl_start(self, rules_count: int) -> None:
+        pass
+
+    def on_hitl_refinement(self, feedback: str, changes_summary: str) -> None:
+        pass
+
+    def on_hitl_complete(self, change_count: int, final_rules_count: int) -> None:
         pass
 
 
@@ -348,6 +369,37 @@ class RichReporter:
             if len(cat_traces) > 3:
                 self.console.print(f"    [dim]... and {len(cat_traces) - 3} more[/dim]")
 
+    def on_hitl_start(self, rules_count: int) -> None:
+        """Display HITL session start."""
+        from rich.panel import Panel
+
+        self.console.print()
+        self.console.print(Panel.fit(
+            f"[bold]Interactive Logic Map Editor[/bold]\n"
+            f"[dim]Review and refine {rules_count} extracted rules[/dim]",
+            title="[cyan]HITL Mode[/cyan]",
+            border_style="cyan"
+        ))
+
+    def on_hitl_refinement(self, feedback: str, changes_summary: str) -> None:
+        """Display refinement result."""
+        feedback_preview = feedback[:60] + "..." if len(feedback) > 60 else feedback
+        self.console.print(f"  [green]✓[/green] [dim]{feedback_preview}[/dim]")
+        self.console.print(f"    [cyan]{changes_summary}[/cyan]")
+
+    def on_hitl_complete(self, change_count: int, final_rules_count: int) -> None:
+        """Display HITL session completion."""
+        if change_count > 0:
+            self.console.print(
+                f"\n[green]✅ HITL Complete[/green] - "
+                f"Made {change_count} change(s), proceeding with {final_rules_count} rules"
+            )
+        else:
+            self.console.print(
+                f"\n[green]✅ HITL Complete[/green] - "
+                f"No changes made, proceeding with {final_rules_count} rules"
+            )
+
 
 class CallbackReporter:
     """
@@ -470,6 +522,15 @@ class CallbackReporter:
 
     def on_golden_scenarios_complete(self, scenarios, distribution) -> None:
         self._emit("golden_scenarios_complete", {"count": len(scenarios), "distribution": distribution})
+
+    def on_hitl_start(self, rules_count: int) -> None:
+        self._emit("hitl_start", {"rules_count": rules_count})
+
+    def on_hitl_refinement(self, feedback: str, changes_summary: str) -> None:
+        self._emit("hitl_refinement", {"feedback": feedback, "changes_summary": changes_summary})
+
+    def on_hitl_complete(self, change_count: int, final_rules_count: int) -> None:
+        self._emit("hitl_complete", {"change_count": change_count, "final_rules_count": final_rules_count})
 
 
 __all__ = ["ProgressReporter", "SilentReporter", "RichReporter", "CallbackReporter"]

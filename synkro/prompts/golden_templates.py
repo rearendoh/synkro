@@ -295,7 +295,7 @@ The final output should include:
 # STAGE 4: VERIFICATION (The Auditor)
 # =============================================================================
 
-VERIFICATION_PROMPT = """You are a verification system checking a trace against the Logic Map.
+VERIFICATION_PROMPT = """You are a verification system checking if a generated trace correctly applies the policy rules.
 
 LOGIC MAP (Ground Truth):
 {logic_map}
@@ -315,39 +315,46 @@ REASONING CHAIN PROVIDED:
 RULES CLAIMED APPLIED: {rules_applied}
 RULES CLAIMED EXCLUDED: {rules_excluded}
 
-VERIFICATION CHECKS:
+VERIFICATION FOCUS - Check these in order of importance:
 
-1. **No Skipped Rules**: Were all rules in target_rule_ids evaluated?
-   - Check: Every rule in target_rule_ids should appear in reasoning_chain
-   - Violation: If a target rule was never mentioned
+1. **Response Correctness** (MOST IMPORTANT):
+   - Does the assistant response CORRECTLY apply the policy rules?
+   - For POSITIVE scenarios: Response should allow/approve/help
+   - For NEGATIVE scenarios: Response should deny/reject/explain why not allowed
+   - For EDGE_CASE: Response should handle the boundary appropriately
+   - For IRRELEVANT: Response should redirect or explain it's outside policy scope
+   - PASS if the response reaches the correct conclusion, even if rule IDs aren't cited
 
-2. **No Hallucinated Rules**: Were only valid rules cited?
-   - Check: Every rule_id in reasoning_chain should exist in Logic Map
-   - Violation: If a non-existent rule was referenced
+2. **Policy Accuracy**:
+   - Does the response accurately reflect what the policy says?
+   - Are the conditions and actions correctly described?
+   - FAIL only if the response contradicts or misrepresents the policy
 
-3. **No Contradictions**: Is the reasoning internally consistent?
-   - Check: If R001 is excluded, dependent rules shouldn't be applied
-   - Check: Final response should match the reasoning conclusion
-   - Violation: Saying "refund approved" when reasoning shows denial
+3. **No Hallucination**:
+   - Does the response invent rules that don't exist?
+   - Does the response cite incorrect thresholds or conditions?
+   - FAIL only if made-up information is presented as policy
 
-4. **DAG Compliance**: Was dependency order followed?
-   - Check: Parent rules evaluated before child rules
-   - Violation: Evaluating R003 before its dependency R001
+4. **Professional Quality**:
+   - Is the response helpful and professional?
+   - Does it provide clear guidance to the user?
+   - Minor tone issues should NOT cause failure
 
-5. **Outcome Alignment**: Does response match expected outcome?
-   - For POSITIVE: Should approve/allow
-   - For NEGATIVE: Should deny/reject with reason
-   - For EDGE_CASE: Should handle boundary correctly
-   - For IRRELEVANT: Should redirect/explain scope
+IMPORTANT GUIDELINES:
+- The assistant does NOT need to cite rule IDs (R001, R002) to pass - users don't see rule IDs
+- Focus on whether the SUBSTANCE of the response is correct
+- If reasoning_chain is "Not provided", evaluate based on the assistant's response content
+- A trace should PASS if it gives the correct guidance, even without explicit rule citations
+- Be lenient on formatting; be strict on correctness
 
 OUTPUT:
-- passed: true/false
-- issues: List of specific problems found
-- skipped_rules: Rules that should have been applied but weren't
-- hallucinated_rules: Rules cited that don't exist/don't apply
-- contradictions: Logical contradictions found
-- rules_verified: Rules that were correctly applied
-- feedback: Summary of verification result"""
+- passed: true/false (true if response is substantively correct)
+- issues: List of actual problems (not just missing citations)
+- skipped_rules: Rules that were INCORRECTLY ignored (content-wise, not citation-wise)
+- hallucinated_rules: Made-up rules or incorrect policy information
+- contradictions: Logical contradictions in the response
+- rules_verified: Rules correctly reflected in the response content
+- feedback: Summary focusing on content correctness"""
 
 
 # =============================================================================

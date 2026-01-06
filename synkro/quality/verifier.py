@@ -182,7 +182,17 @@ class TraceVerifier:
         Returns:
             Tuple of (VerificationResult, GradeResult)
         """
-        verification = await self.verify(trace, logic_map, scenario)
+        # Extract reasoning chain metadata from trace (if present)
+        reasoning_chain = getattr(trace, 'reasoning_chain', None)
+        rules_applied = getattr(trace, 'rules_applied', None)
+        rules_excluded = getattr(trace, 'rules_excluded', None)
+
+        verification = await self.verify(
+            trace, logic_map, scenario,
+            reasoning_chain=reasoning_chain,
+            rules_applied=rules_applied,
+            rules_excluded=rules_excluded,
+        )
 
         # Convert to GradeResult for pipeline compatibility
         grade = GradeResult(

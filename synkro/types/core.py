@@ -65,6 +65,11 @@ class Trace(BaseModel):
     scenario: Scenario = Field(description="The scenario this trace was generated from")
     grade: GradeResult | None = Field(default=None, description="Grading result if graded")
 
+    # Golden Trace metadata (for verification)
+    reasoning_chain: list[Any] | None = Field(default=None, description="Chain-of-thought reasoning steps with rule citations")
+    rules_applied: list[str] | None = Field(default=None, description="Rule IDs that were applied in the response")
+    rules_excluded: list[str] | None = Field(default=None, description="Rule IDs that were explicitly excluded")
+
     @property
     def system_message(self) -> str | None:
         """Get the system message content."""

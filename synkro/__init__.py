@@ -116,6 +116,7 @@ def generate(
     skip_grading: bool = False,
     reporter: ProgressReporter | None = None,
     return_logic_map: bool = False,
+    enable_hitl: bool = True,
 ) -> Dataset | GenerationResult:
     """
     Generate training traces from a policy document.
@@ -134,6 +135,7 @@ def generate(
         skip_grading: Skip grading phase for faster generation (default: False)
         reporter: Progress reporter (default: RichReporter for console output)
         return_logic_map: If True, return GenerationResult with Logic Map access
+        enable_hitl: Enable Human-in-the-Loop Logic Map editing (default: False)
 
     Returns:
         Dataset (default) or GenerationResult if return_logic_map=True
@@ -150,6 +152,9 @@ def generate(
 
         >>> # Multi-turn with fixed 3 turns
         >>> dataset = synkro.generate(policy, turns=3)
+
+        >>> # Interactive Logic Map editing
+        >>> dataset = synkro.generate(policy, enable_hitl=True)
 
         >>> # Silent mode
         >>> from synkro import SilentReporter
@@ -168,6 +173,7 @@ def generate(
         skip_grading=skip_grading,
         reporter=reporter,
         turns=turns,
+        enable_hitl=enable_hitl,
     )
 
     return generator.generate(policy, traces=traces, return_logic_map=return_logic_map)
