@@ -14,15 +14,18 @@ litellm.enable_json_schema_validation = True
 # Suppress Pydantic serialization warnings from litellm response types
 warnings.filterwarnings(
     "ignore",
-    message="Expected `Message`",
+    message=".*Pydantic serializer warnings.*",
     category=UserWarning,
-    module="pydantic.*",
 )
 warnings.filterwarnings(
     "ignore",
-    message="Expected `StreamingChoices`",
+    message=".*Expected `Message`.*",
     category=UserWarning,
-    module="pydantic.*",
+)
+warnings.filterwarnings(
+    "ignore",
+    message=".*Expected `StreamingChoices`.*",
+    category=UserWarning,
 )
 
 from synkro.models import OpenAI, Model, get_model_string, LocalModel
