@@ -285,57 +285,16 @@ class RichReporter:
             self.console.print(f"  [dim]Root rules: {', '.join(logic_map.root_rules)}[/dim]")
 
     def on_golden_scenarios_complete(self, scenarios, distribution) -> None:
-        """Display golden scenarios as a category × type matrix (Stage 2)."""
-        from rich.table import Table
+        """Display golden scenarios summary (Stage 2)."""
+        # Simple one-line summary - full details shown in HITL session
+        parts = []
+        for stype in ["positive", "negative", "edge_case", "irrelevant"]:
+            if distribution.get(stype, 0) > 0:
+                label = stype.replace("_", " ")
+                parts.append(f"{distribution[stype]} {label}")
 
-        self.console.print(f"\n[green]💡 Golden Scenarios[/green] [dim]{len(scenarios)} created[/dim]")
-
-        # Build category × type matrix
-        matrix: dict[str, dict[str, int]] = {}
-        for s in scenarios:
-            cat = s.category or "uncategorized"
-            stype = s.scenario_type.value if hasattr(s.scenario_type, 'value') else s.scenario_type
-            matrix.setdefault(cat, {"positive": 0, "negative": 0, "edge_case": 0, "irrelevant": 0})
-            matrix[cat][stype] += 1
-
-        # Create the combined table
-        table = Table(title="Scenario Distribution", show_header=True, header_style="bold cyan")
-        table.add_column("Category", style="cyan")
-        table.add_column("[green]✓ Positive[/green]", justify="right")
-        table.add_column("[red]✗ Negative[/red]", justify="right")
-        table.add_column("[yellow]⚡ Edge[/yellow]", justify="right")
-        table.add_column("[dim]○ Irrelevant[/dim]", justify="right")
-        table.add_column("Total", justify="right", style="bold")
-
-        # Track column totals
-        totals = {"positive": 0, "negative": 0, "edge_case": 0, "irrelevant": 0}
-
-        for cat_name, counts in matrix.items():
-            row_total = sum(counts.values())
-            table.add_row(
-                cat_name,
-                str(counts["positive"]),
-                str(counts["negative"]),
-                str(counts["edge_case"]),
-                str(counts["irrelevant"]),
-                str(row_total),
-            )
-            for stype, count in counts.items():
-                totals[stype] += count
-
-        # Add totals row
-        grand_total = sum(totals.values())
-        table.add_section()
-        table.add_row(
-            "[bold]Total[/bold]",
-            f"[bold]{totals['positive']}[/bold]",
-            f"[bold]{totals['negative']}[/bold]",
-            f"[bold]{totals['edge_case']}[/bold]",
-            f"[bold]{totals['irrelevant']}[/bold]",
-            f"[bold]{grand_total}[/bold]",
-        )
-
-        self.console.print(table)
+        summary = ", ".join(parts) if parts else "none"
+        self.console.print(f"\n[green]💡 Golden Scenarios[/green] [dim]{len(scenarios)} created ({summary})[/dim]")
 
     def on_responses_complete(self, traces: list[Trace]) -> None:
         """Enhanced to show category and type for each trace."""
