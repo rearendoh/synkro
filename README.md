@@ -60,11 +60,11 @@ dataset = pipeline.generate(policy)
 
 ## Dataset Types
 
-| Format | Turns | Output | Best For |
-|--------|-------|--------|----------|
-| **CONVERSATION** | Multi | Chat messages | Fine-tuning chat models |
-| **INSTRUCTION** | 1 | Single Q&A | Instruction-following models |
-| **TOOL_CALL** | Multi | Function calling | Teaching tool use |
+| Type | Turns | Output Formats | Best For |
+|------|-------|----------------|----------|
+| **CONVERSATION** | Multi | messages | Fine-tuning chat models |
+| **INSTRUCTION** | 1 | messages | Instruction-following models |
+| **TOOL_CALL** | Multi | OpenAI function calling, ChatML | Teaching tool use |
 
 ### Conversation (Default)
 
@@ -133,18 +133,30 @@ Use web_search for real-time data like weather, prices.
 Answer general questions directly without tools.
 """, traces=20)
 
-dataset.save("tool_training.jsonl", format="tool_call")
+dataset.save("tool_training.jsonl", format="tool_call")  # OpenAI format
+dataset.save("tool_training.jsonl", format="chatml")     # ChatML with XML tags
 ```
 
-Output (OpenAI function calling format):
+**Output Formats:**
+
+OpenAI function calling (`format="tool_call"`):
 ```json
 {"messages": [
-  {"role": "system", "content": "You have access to: web_search..."},
   {"role": "user", "content": "What's the weather in NYC?"},
   {"role": "assistant", "content": null, "tool_calls": [
     {"id": "call_abc", "type": "function", "function": {"name": "web_search", "arguments": "{\"query\": \"weather NYC\"}"}}
   ]},
   {"role": "tool", "tool_call_id": "call_abc", "content": "NYC: 72°F, sunny"},
+  {"role": "assistant", "content": "The weather in NYC is 72°F and sunny."}
+]}
+```
+
+ChatML with XML tags (`format="chatml"`):
+```json
+{"messages": [
+  {"role": "user", "content": "What's the weather in NYC?"},
+  {"role": "assistant", "content": "<tool_call>\n{\"name\": \"web_search\", \"arguments\": {\"query\": \"weather NYC\"}}\n</tool_call>"},
+  {"role": "tool", "content": "<tool_response>\nNYC: 72°F, sunny\n</tool_response>"},
   {"role": "assistant", "content": "The weather in NYC is 72°F and sunny."}
 ]}
 ```
