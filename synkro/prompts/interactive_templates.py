@@ -62,7 +62,7 @@ Provide a brief changes_summary explaining what was done.
 Provide reasoning explaining how you interpreted the user's feedback."""
 
 
-HITL_INTENT_CLASSIFIER_PROMPT = """You are classifying user feedback in an interactive SFT data generation session.
+HITL_INTENT_CLASSIFIER_PROMPT = """You are classifying user feedback in an interactive training data generation session.
 
 CURRENT STATE:
 - Conversation turns: {current_turns} ({complexity_level} complexity)
@@ -120,7 +120,7 @@ IMPORTANT:
 - Default to "scenarios" if ambiguous between scenarios and unclear"""
 
 
-SCENARIO_REFINEMENT_PROMPT = """You are a scenario editor for SFT data generation. Your task is to modify scenarios based on user feedback.
+SCENARIO_REFINEMENT_PROMPT = """You are a scenario editor for training data generation. Your task is to modify scenarios based on user feedback.
 
 LOGIC MAP (for rule references):
 {logic_map}

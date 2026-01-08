@@ -351,7 +351,7 @@ class GoldenTracePhase:
     - Exclusionary reasoning (why rules don't apply)
     - DAG-compliant dependency order
 
-    This is Stage 3 of the Golden Trace pipeline for SFT/QA.
+    This is Stage 3 of the Golden Trace pipeline for CONVERSATION/INSTRUCTION.
     """
 
     async def execute(

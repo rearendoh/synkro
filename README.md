@@ -5,7 +5,7 @@ Turn policies, handbooks, and documentation into high-quality training data for 
 ## Features
 
 - **Quality Evaluation** - Each response is graded and automatically refined if it fails
-- **Multiple Formats** - SFT (chat), QA (question-answer), and Tool Calling
+- **Multiple Formats** - Conversation (multi-turn), Instruction (single-turn), and Tool Calling
 - **Tool Call Training** - Generate OpenAI function calling format for teaching models to use custom tools
 - **Top LLM Providers** - OpenAI, Anthropic, and Google
 - **File Support** - PDF, DOCX, TXT, Markdown, URLs
@@ -27,7 +27,7 @@ from synkro.types import DatasetType
 pipeline = create_pipeline(
     model=Google.GEMINI_25_FLASH,          # Fast generation
     grading_model=Google.GEMINI_25_PRO,    # Quality grading
-    dataset_type=DatasetType.SFT,
+    dataset_type=DatasetType.CONVERSATION,
 )
 
 dataset = pipeline.generate(
@@ -60,39 +60,44 @@ dataset = pipeline.generate(policy)
 
 ## Dataset Types
 
-| Format | Output | Best For |
-|--------|--------|----------|
-| **SFT** | Chat messages | Fine-tuning chat models |
-| **QA** | Question-answer pairs | RAG systems, knowledge bases |
-| **TOOL_CALL** | Function calling format | Training models to use custom tools |
+| Format | Turns | Output | Best For |
+|--------|-------|--------|----------|
+| **CONVERSATION** | Multi | Chat messages | Fine-tuning chat models |
+| **INSTRUCTION** | 1 | Single Q&A | Instruction-following models |
+| **TOOL_CALL** | Multi | Function calling | Teaching tool use |
 
-### SFT (Default)
+### Conversation (Default)
 
 ```python
 from synkro.types import DatasetType
 
-pipeline = create_pipeline(dataset_type=DatasetType.SFT)
+pipeline = create_pipeline(dataset_type=DatasetType.CONVERSATION)
 dataset = pipeline.generate(policy)
 ```
 
-Output:
+Output (multi-turn):
 ```json
 {"messages": [
-  {"role": "system", "content": "You are a policy expert..."},
   {"role": "user", "content": "What's the approval process for $350?"},
-  {"role": "assistant", "content": "For a $350 expense, you need..."}
+  {"role": "assistant", "content": "For a $350 expense, you need manager approval..."},
+  {"role": "user", "content": "What if my manager is unavailable?"},
+  {"role": "assistant", "content": "You can request approval from..."}
 ]}
 ```
 
-### QA
+### Instruction
 
 ```python
-pipeline = create_pipeline(dataset_type=DatasetType.QA)
+pipeline = create_pipeline(dataset_type=DatasetType.INSTRUCTION)
+dataset = pipeline.generate(policy)
 ```
 
-Output:
+Output (single-turn):
 ```json
-{"question": "What's the approval process?", "answer": "You need...", "context": "..."}
+{"messages": [
+  {"role": "user", "content": "What's the approval process for $350?"},
+  {"role": "assistant", "content": "For a $350 expense, you need manager approval. Submit the expense report with receipt..."}
+]}
 ```
 
 ### Tool Calling
@@ -172,7 +177,7 @@ high_quality.save("training.jsonl")
 
 ```bash
 # From file
-synkro generate policy.pdf --traces 50 --format sft
+synkro generate policy.pdf --traces 50
 
 # From text
 synkro generate "All expenses over $50 need approval" -n 20
@@ -186,7 +191,6 @@ synkro generate policy.pdf --no-interactive
 
 **Options:**
 - `--traces, -n` - Number of traces (default: 20)
-- `--format, -f` - Output format: sft, qa, or tool_call (default: sft)
 - `--output, -o` - Output file path
 - `--model, -m` - Model for generation
 - `--interactive/-i, --no-interactive/-I` - Review/edit extracted rules before generation (default: on)

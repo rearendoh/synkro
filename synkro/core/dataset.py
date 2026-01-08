@@ -218,7 +218,7 @@ class Dataset(BaseModel):
 
         Args:
             path: Output file path (auto-generated if not provided)
-            format: Output format - "sft", "qa", or "tool_call"
+            format: Output format - "sft", "tool_call", or "chatml"
 
         Returns:
             Self for method chaining
@@ -226,26 +226,26 @@ class Dataset(BaseModel):
         Example:
             >>> dataset.save()  # Auto-names: synkro_sft_2024-01-15.jsonl
             >>> dataset.save("training.jsonl")
-            >>> dataset.save("qa_data.jsonl", format="qa")
             >>> dataset.save("tools.jsonl", format="tool_call")
+            >>> dataset.save("chatml.jsonl", format="chatml")
         """
-        from synkro.formatters import SFTFormatter, QAFormatter, ToolCallFormatter
+        from synkro.formatters import SFTFormatter, ToolCallFormatter, ChatMLFormatter
 
         # Auto-generate filename if not provided
         if path is None:
             timestamp = datetime.now().strftime("%Y-%m-%d_%H%M")
             path = f"synkro_{format}_{timestamp}.jsonl"
-        
+
         path = Path(path)
 
         if format == "sft":
             SFTFormatter().save(self.traces, path)
-        elif format == "qa":
-            QAFormatter().save(self.traces, path)
         elif format == "tool_call":
             ToolCallFormatter().save(self.traces, path)
+        elif format == "chatml":
+            ChatMLFormatter().save(self.traces, path)
         else:
-            raise ValueError(f"Unknown format: {format}. Use 'sft', 'qa', or 'tool_call'")
+            raise ValueError(f"Unknown format: {format}. Use 'sft', 'tool_call', or 'chatml'")
         
         # Print confirmation
         file_size = path.stat().st_size
@@ -259,28 +259,28 @@ class Dataset(BaseModel):
         Convert dataset to JSONL string.
 
         Args:
-            format: Output format - "sft", "qa", or "tool_call"
+            format: Output format - "sft", "tool_call", or "chatml"
 
         Returns:
             JSONL formatted string
         """
-        from synkro.formatters import SFTFormatter, QAFormatter, ToolCallFormatter
+        from synkro.formatters import SFTFormatter, ToolCallFormatter, ChatMLFormatter
 
         if format == "sft":
             return SFTFormatter().to_jsonl(self.traces)
-        elif format == "qa":
-            return QAFormatter().to_jsonl(self.traces)
         elif format == "tool_call":
             return ToolCallFormatter().to_jsonl(self.traces)
+        elif format == "chatml":
+            return ChatMLFormatter().to_jsonl(self.traces)
         else:
-            raise ValueError(f"Unknown format: {format}. Use 'sft', 'qa', or 'tool_call'")
+            raise ValueError(f"Unknown format: {format}. Use 'sft', 'tool_call', or 'chatml'")
 
     def to_hf_dataset(self, format: str = "sft"):
         """
         Convert to HuggingFace Dataset.
 
         Args:
-            format: Output format - "sft", "qa", or "tool_call"
+            format: Output format - "sft", "tool_call", or "chatml"
 
         Returns:
             HuggingFace datasets.Dataset object
@@ -302,16 +302,16 @@ class Dataset(BaseModel):
                 "Install with: pip install datasets"
             )
 
-        from synkro.formatters import SFTFormatter, QAFormatter, ToolCallFormatter
+        from synkro.formatters import SFTFormatter, ToolCallFormatter, ChatMLFormatter
 
         if format == "sft":
             examples = SFTFormatter(include_metadata=True).format(self.traces)
-        elif format == "qa":
-            examples = QAFormatter().format(self.traces)
         elif format == "tool_call":
             examples = ToolCallFormatter().format(self.traces)
+        elif format == "chatml":
+            examples = ChatMLFormatter().format(self.traces)
         else:
-            raise ValueError(f"Unknown format: {format}")
+            raise ValueError(f"Unknown format: {format}. Use 'sft', 'tool_call', or 'chatml'")
 
         return HFDataset.from_list(examples)
 

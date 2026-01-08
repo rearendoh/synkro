@@ -37,8 +37,12 @@ class Generator:
         >>> generator = Generator()
         >>> dataset = generator.generate(policy, traces=20)
 
-        >>> # QA dataset
-        >>> generator = Generator(dataset_type=DatasetType.QA)
+        >>> # Conversation dataset (default, multi-turn)
+        >>> generator = Generator(dataset_type=DatasetType.CONVERSATION)
+        >>> dataset = generator.generate(policy)
+
+        >>> # Instruction dataset (single-turn)
+        >>> generator = Generator(dataset_type=DatasetType.INSTRUCTION)
         >>> dataset = generator.generate(policy)
 
         >>> # Silent mode (no console output)
@@ -55,7 +59,7 @@ class Generator:
 
     def __init__(
         self,
-        dataset_type: DatasetType = DatasetType.SFT,
+        dataset_type: DatasetType = DatasetType.CONVERSATION,
         generation_model: Model = OpenAI.GPT_4O_MINI,
         grading_model: Model = OpenAI.GPT_4O,
         max_iterations: int = 1,
@@ -71,7 +75,7 @@ class Generator:
         Initialize the Generator.
 
         Args:
-            dataset_type: Type of dataset to generate (QA, SFT, or TOOL_CALL)
+            dataset_type: Type of dataset to generate (CONVERSATION, INSTRUCTION, or TOOL_CALL)
             generation_model: Model for scenarios/responses (default: gpt-4o-mini)
             grading_model: Model for grading (default: gpt-4o, recommend stronger)
             max_iterations: Max refinement iterations per trace (default: 1, no retries)
@@ -105,7 +109,11 @@ class Generator:
         # Validate tools for TOOL_CALL dataset type
         if dataset_type == DatasetType.TOOL_CALL and not tools:
             raise ValueError("TOOL_CALL dataset type requires tools parameter")
-        
+
+        # Force turns=1 for INSTRUCTION type
+        if dataset_type == DatasetType.INSTRUCTION:
+            self.turns = 1
+
         # Store model info for reporting
         self.generation_model = generation_model
         self.grading_model = grading_model

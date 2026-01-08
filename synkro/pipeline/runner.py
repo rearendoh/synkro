@@ -72,7 +72,7 @@ class GenerationPipeline:
     """
     Orchestrates the Golden Trace generation pipeline.
 
-    All dataset types (SFT, QA, TOOL_CALL) use the unified 4-stage pipeline:
+    All dataset types (CONVERSATION, INSTRUCTION, TOOL_CALL) use the unified 4-stage pipeline:
     - Stage 1: Logic Extraction - Extract rules as DAG
     - Stage 2: Scenario Synthesis - Generate typed scenarios (positive, negative, edge_case, irrelevant)
     - Stage 3: Trace Synthesis - Produce grounded reasoning with rule citations

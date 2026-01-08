@@ -3,7 +3,7 @@ Advanced Usage Example
 ======================
 
 Comprehensive example demonstrating all Synkro features working together:
-- Multiple dataset types (SFT, QA)
+- Chat dataset generation
 - Custom grader selection
 - Evaluation workflow
 - Custom pipeline components
@@ -57,10 +57,10 @@ async def main():
     print()
 
     # ============================================================================
-    # Part 2: Generate Multiple Dataset Types
+    # Part 2: Generate Chat Dataset
     # ============================================================================
 
-    print("Part 2: Generating Multiple Dataset Types")
+    print("Part 2: Generating Chat Dataset")
     print("-" * 80)
     print()
 
@@ -72,23 +72,11 @@ async def main():
         max_iterations=3,
     )
 
-    # Generate SFT format (default)
-    print("Generating SFT dataset...")
-    dataset_sft = generator.generate(policy, traces=10)
-    print(f"  Generated {len(dataset_sft)} traces, pass rate: {dataset_sft.passing_rate:.1%}")
-    dataset_sft.save("advanced_sft.jsonl", format="sft")
-    print()
-
-    # Generate QA format
-    print("Generating QA dataset...")
-    generator_qa = Generator(
-        dataset_type=DatasetType.QA,
-        generation_model=OpenAI.GPT_4O_MINI,
-        grading_model=OpenAI.GPT_4O,
-    )
-    dataset_qa = generator_qa.generate(policy, traces=10)
-    print(f"  Generated {len(dataset_qa)} traces, pass rate: {dataset_qa.passing_rate:.1%}")
-    dataset_qa.save("advanced_qa.jsonl", format="qa")
+    # Generate chat format (default)
+    print("Generating chat dataset...")
+    dataset_chat = generator.generate(policy, traces=10)
+    print(f"  Generated {len(dataset_chat)} traces, pass rate: {dataset_chat.passing_rate:.1%}")
+    dataset_chat.save("advanced_chat.jsonl")
     print()
 
     # ============================================================================
@@ -100,17 +88,17 @@ async def main():
     print()
 
     # Re-grade with different grader model
-    print("Re-grading SFT dataset with Claude grader...")
+    print("Re-grading chat dataset with Claude grader...")
     claude_grader = Grader(model=Anthropic.CLAUDE_35_SONNET)
 
-    for trace in dataset_sft:
+    for trace in dataset_chat:
         new_grade = await claude_grader.grade(trace, policy.text)
         trace.grade = new_grade
 
     # Compare pass rates
-    claude_passed = sum(1 for t in dataset_sft if t.grade and t.grade.passed)
-    print(f"  GPT-4o grader: {dataset_sft.passing_rate:.1%} passed")
-    print(f"  Claude grader: {claude_passed/len(dataset_sft):.1%} passed")
+    claude_passed = sum(1 for t in dataset_chat if t.grade and t.grade.passed)
+    print(f"  GPT-4o grader: {dataset_chat.passing_rate:.1%} passed")
+    print(f"  Claude grader: {claude_passed/len(dataset_chat):.1%} passed")
     print("  (Different graders may have different evaluation criteria)")
     print()
 
@@ -255,17 +243,13 @@ async def main():
     print()
 
     # Save all traces
-    custom_dataset.save("advanced_custom_pipeline.jsonl", format="sft")
+    custom_dataset.save("advanced_custom_pipeline.jsonl")
     print("  Saved all traces: advanced_custom_pipeline.jsonl")
 
     # Save only passing traces
     if len(passing) > 0:
-        passing.save("advanced_high_quality.jsonl", format="sft")
+        passing.save("advanced_high_quality.jsonl")
         print("  Saved passing traces: advanced_high_quality.jsonl")
-
-    # Save in different formats
-    custom_dataset.save("advanced_custom_qa.jsonl", format="qa")
-    print("  Saved as QA format: advanced_custom_qa.jsonl")
     print()
 
     # Summary
@@ -274,19 +258,17 @@ async def main():
     print("=" * 80)
     print()
     print("This example demonstrated:")
-    print("  ✓ Generating multiple dataset types (SFT, QA)")
+    print("  ✓ Generating chat datasets")
     print("  ✓ Custom grader selection with different models")
     print("  ✓ Custom pipeline using individual components")
     print("  ✓ Evaluation workflow with grading and refinement")
     print("  ✓ Quality analysis and filtering")
-    print("  ✓ Exporting datasets in different formats")
+    print("  ✓ Exporting datasets")
     print()
     print("Files created:")
-    print("  - advanced_sft.jsonl")
-    print("  - advanced_qa.jsonl")
+    print("  - advanced_chat.jsonl")
     print("  - advanced_custom_pipeline.jsonl")
     print("  - advanced_high_quality.jsonl")
-    print("  - advanced_custom_qa.jsonl")
     print()
 
 

@@ -8,7 +8,7 @@ Quick Start:
 
 Pipeline Usage (more control):
     >>> from synkro import create_pipeline, DatasetType
-    >>> pipeline = create_pipeline(dataset_type=DatasetType.SFT)
+    >>> pipeline = create_pipeline(dataset_type=DatasetType.CONVERSATION)
     >>> dataset = pipeline.generate("policy text", traces=50)
 
 Access Logic Map (for inspection):
@@ -113,7 +113,7 @@ def generate(
     policy: str | Policy,
     traces: int = 20,
     turns: int | str = "auto",
-    dataset_type: DatasetType = DatasetType.SFT,
+    dataset_type: DatasetType = DatasetType.CONVERSATION,
     generation_model: OpenAI | Anthropic | Google | LocalModel | str = OpenAI.GPT_5_MINI,
     grading_model: OpenAI | Anthropic | Google | LocalModel | str = OpenAI.GPT_52,
     max_iterations: int = 3,
@@ -133,7 +133,7 @@ def generate(
         traces: Number of traces to generate (default: 20)
         turns: Conversation turns per trace. Use int for fixed turns, or "auto"
             for policy complexity-driven turns (Simple=1-2, Conditional=3, Complex=5+)
-        dataset_type: Type of dataset - SFT (default) or QA
+        dataset_type: Type of dataset - CONVERSATION (default), INSTRUCTION, or TOOL_CALL
         generation_model: Model for generating (default: gpt-5-mini)
         grading_model: Model for grading (default: gpt-5.2)
         max_iterations: Max refinement iterations per trace (default: 3)

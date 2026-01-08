@@ -46,21 +46,20 @@ def get_mode_config(dataset_type: "DatasetType") -> ModeConfig:
 
     Example:
         >>> from synkro import DatasetType
-        >>> config = get_mode_config(DatasetType.QA)
+        >>> config = get_mode_config(DatasetType.CONVERSATION)
     """
-    from synkro.types.dataset_type import DatasetType
-    from synkro.modes.qa import QA_CONFIG
-    from synkro.modes.sft import SFT_CONFIG
+    from synkro.modes.conversation import CONVERSATION_CONFIG, INSTRUCTION_CONFIG
     from synkro.modes.tool_call import TOOL_CALL_CONFIG
 
     configs = {
-        DatasetType.QA: QA_CONFIG,
-        DatasetType.SFT: SFT_CONFIG,
-        DatasetType.TOOL_CALL: TOOL_CALL_CONFIG,
+        "conversation": CONVERSATION_CONFIG,
+        "instruction": INSTRUCTION_CONFIG,
+        "tool_call": TOOL_CALL_CONFIG,
     }
 
-    if dataset_type not in configs:
+    type_value = dataset_type.value if hasattr(dataset_type, 'value') else str(dataset_type)
+
+    if type_value not in configs:
         raise ValueError(f"Unknown dataset type: {dataset_type}")
 
-    return configs[dataset_type]
-
+    return configs[type_value]

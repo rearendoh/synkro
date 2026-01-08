@@ -145,7 +145,7 @@ Always prioritize accuracy, clarity, and deep domain understanding in your guida
 
 BATCHED_RESPONSE_PROMPT = """You are generating training data for a domain expert model.
 
-For EACH scenario below, create a complete training example in CHAT MESSAGES FORMAT.
+For EACH scenario below, create a complete training example in MESSAGES FORMAT.
 
 Each training example must have exactly 3 messages:
 1. "system" - The system prompt defining the assistant's role
@@ -207,7 +207,7 @@ Requirements:
 4. Replace vague language with specific, actionable recommendations
 5. Keep the parts that were already correct
 
-Output in CHAT MESSAGES FORMAT with exactly 3 messages:
+Output in MESSAGES FORMAT with exactly 3 messages:
 1. "system" - The system prompt defining the assistant's role
 2. "user" - The scenario and context as the user's question  
 3. "assistant" - Your IMPROVED guidance

@@ -7,7 +7,7 @@ Usage:
 
     pipeline = create_pipeline(
         model=OpenAI.GPT_5_MINI,
-        dataset_type=DatasetType.SFT,
+        dataset_type=DatasetType.CONVERSATION,
     )
     dataset = pipeline.generate("policy text", traces=50)
     
@@ -40,7 +40,7 @@ if TYPE_CHECKING:
 
 def create_pipeline(
     model: Model = OpenAI.GPT_5_MINI,
-    dataset_type: DatasetType = DatasetType.SFT,
+    dataset_type: DatasetType = DatasetType.CONVERSATION,
     grading_model: Model = OpenAI.GPT_52,
     max_iterations: int = 3,
     skip_grading: bool = False,
@@ -56,7 +56,7 @@ def create_pipeline(
 
     Args:
         model: Model enum for generation (default: OpenAI.GPT_5_MINI)
-        dataset_type: Type of dataset - QA, SFT, or TOOL_CALL (default: SFT)
+        dataset_type: Type of dataset - CONVERSATION, INSTRUCTION, or TOOL_CALL (default: CONVERSATION)
         grading_model: Model enum for grading (default: OpenAI.GPT_52)
         max_iterations: Max refinement iterations per trace (default: 3)
         skip_grading: Skip grading phase for faster generation (default: False)
@@ -78,7 +78,7 @@ def create_pipeline(
         >>>
         >>> pipeline = create_pipeline(
         ...     model=OpenAI.GPT_5_MINI,
-        ...     dataset_type=DatasetType.SFT,
+        ...     dataset_type=DatasetType.CONVERSATION,
         ... )
         >>> dataset = pipeline.generate("policy text", traces=50)
         >>> dataset.save("training.jsonl")

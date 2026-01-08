@@ -40,7 +40,7 @@ else:
     pipeline = create_pipeline(
         model=Google.GEMINI_25_FLASH,       # Fast generation
         grading_model=Google.GEMINI_25_PRO, # Quality grading
-        dataset_type=DatasetType.SFT,       # Chat format
+        dataset_type=DatasetType.CONVERSATION,       # Chat format
         max_iterations=3,                   # Up to 3 refinement attempts
     )
 

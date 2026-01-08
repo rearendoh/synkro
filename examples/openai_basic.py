@@ -2,8 +2,8 @@
 OpenAI Basic Example - Dataset Generation
 ==========================================
 
-Generate SFT datasets using OpenAI models:
-- GPT-5-mini for fast generation
+Generate chat datasets using OpenAI models:
+- GPT-4o-mini for fast generation
 - GPT-4o for quality grading
 
 Requires: OPENAI_API_KEY environment variable
@@ -27,7 +27,7 @@ from synkro.examples import EXPENSE_POLICY
 pipeline = create_pipeline(
     model=OpenAI.GPT_4O_MINI,           # Fast, cost-effective generation
     grading_model=OpenAI.GPT_4O,        # High-quality grading
-    dataset_type=DatasetType.SFT,       # Chat format for fine-tuning
+    dataset_type=DatasetType.CONVERSATION,      # Chat format for fine-tuning
     max_iterations=3,                   # Max refinement attempts per trace
 )
 
@@ -38,7 +38,7 @@ dataset = pipeline.generate(EXPENSE_POLICY, traces=20)
 passing = dataset.filter(passed=True)
 
 # Save to JSONL file
-passing.save("openai_sft.jsonl")
+passing.save("openai_chat.jsonl")
 
 # View summary
 print(passing.summary())

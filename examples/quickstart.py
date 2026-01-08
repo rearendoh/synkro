@@ -2,13 +2,13 @@
 Synkro Quickstart - RLAIF Data Generation
 ==========================================
 
-Generate high-quality SFT (supervised fine-tuning) datasets:
-- LLM generates diverse scenarios from your policy 
-- Strong model creates expert responses 
+Generate high-quality chat fine-tuning datasets:
+- LLM generates diverse scenarios from your policy
+- Strong model creates expert responses
 - AI grader filters by quality against policy rules
 - Output: Ready-to-train JSONL with only passing traces
 
-Dataset types: SFT (chat format), QA (question-answer), DPO (preference pairs)
+Dataset types: CONVERSATION (multi-turn), INSTRUCTION (single-turn), TOOL_CALL (with function calling)
 
 See other examples for advanced features.
 """
@@ -28,12 +28,12 @@ from synkro.examples import EXPENSE_POLICY
 # Create a pipeline: generates scenarios, responses, and grades them
 # - model: Used for scenario and response generation (fast model recommended)
 # - grading_model: Used for quality grading (stronger model recommended for better filtering)
-# - dataset_type: SFT = chat format, QA = question-answer, DPO = preference pairs
+# - dataset_type: CONVERSATION = multi-turn, INSTRUCTION = single-turn, TOOL_CALL = with function calling
 pipeline = create_pipeline(
     model=Google.GEMINI_25_FLASH,       # Fast generation
     grading_model=Google.GEMINI_25_FLASH, # Quality grading
     #grading_model=Google.GEMINI_25_PRO, # Quality grading (stronger = better filtering)
-    dataset_type=DatasetType.SFT,       # Chat format for fine-tuning
+    dataset_type=DatasetType.CONVERSATION,      # Chat format for fine-tuning
     max_iterations=3,                   # Max refinement iterations per trace
     #skip_grading=True,                  # Skip grading phase for faster generation
 )

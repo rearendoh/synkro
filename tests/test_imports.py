@@ -17,24 +17,8 @@ def test_main_imports():
         GradeResult,
         Plan,
         Category,
-        # Generation
-        Generator,
-        ScenarioGenerator,
-        ResponseGenerator,
-        Planner,
-        # Quality
-        Grader,
-        Refiner,
         # LLM
         LLM,
-        # Prompts
-        SystemPrompt,
-        ScenarioPrompt,
-        ResponsePrompt,
-        GradePrompt,
-        # Formatters
-        SFTFormatter,
-        QAFormatter,
         # Model enums (OpenAI, Anthropic, Google supported)
         OpenAI,
         Anthropic,
@@ -44,7 +28,6 @@ def test_main_imports():
     # Verify they're all importable
     assert generate is not None
     assert Policy is not None
-    assert Generator is not None
     assert OpenAI.GPT_4O_MINI.value == "gpt-4o-mini"
 
 
@@ -125,7 +108,8 @@ def test_dataset_filter():
 
 def test_formatter_output():
     """Test SFT formatter output."""
-    from synkro import SFTFormatter, Trace, Scenario, Message
+    from synkro.formatters import SFTFormatter
+    from synkro import Trace, Scenario, Message
 
     trace = Trace(
         messages=[

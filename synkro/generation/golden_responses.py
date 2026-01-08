@@ -1,7 +1,7 @@
 """Golden Response Generator - The Thinker.
 
 Generates traces with grounded Chain-of-Thought reasoning and rule citations.
-This is Stage 3 of the Golden Trace pipeline for SFT/QA datasets.
+This is Stage 3 of the Golden Trace pipeline for CONVERSATION/INSTRUCTION datasets.
 """
 
 import asyncio

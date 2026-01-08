@@ -103,7 +103,6 @@ from synkro.prompts.golden_templates import (
 
 # Formatters
 from synkro.formatters.sft import SFTFormatter
-from synkro.formatters.qa import QAFormatter
 from synkro.formatters.tool_call import ToolCallFormatter
 
 # Schemas (for structured output)
@@ -173,7 +172,6 @@ __all__ = [
     "GOLDEN_TOOL_TRACE_PROMPT",
     # Formatters
     "SFTFormatter",
-    "QAFormatter",
     "ToolCallFormatter",
     # Schemas
     "RuleExtraction",

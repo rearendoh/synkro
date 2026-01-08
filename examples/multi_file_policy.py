@@ -97,7 +97,7 @@ print()
 pipeline = create_pipeline(
     model=Google.GEMINI_25_FLASH,
     grading_model=Google.GEMINI_25_FLASH,
-    dataset_type=DatasetType.SFT,
+    dataset_type=DatasetType.CONVERSATION,
     max_iterations=2,
 )
 

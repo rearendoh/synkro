@@ -16,7 +16,7 @@ from synkro.examples import EXPENSE_POLICY
 pipeline = create_pipeline(
     model=OpenAI.GPT_4O_MINI,
     grading_model=OpenAI.GPT_4O,
-    dataset_type=DatasetType.SFT,
+    dataset_type=DatasetType.CONVERSATION,
     max_iterations=2,
 )
 

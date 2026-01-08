@@ -9,22 +9,21 @@ class DatasetType(str, Enum):
 
     The dataset type determines:
     - Prompts used for scenario and response generation
-    - Grading criteria
+    - Conversation turns (INSTRUCTION forces 1 turn)
     - Output format and schema
 
     Examples:
         >>> from synkro import DatasetType
-        >>> synkro.generate(policy, dataset_type=DatasetType.QA)
-        >>> synkro.generate(policy, dataset_type=DatasetType.SFT)
+        >>> synkro.generate(policy, dataset_type=DatasetType.CONVERSATION)  # Multi-turn
+        >>> synkro.generate(policy, dataset_type=DatasetType.INSTRUCTION)   # Single-turn
         >>> synkro.generate(policy, dataset_type=DatasetType.TOOL_CALL, tools=[...])
     """
 
-    QA = "qa"
-    """Question-Answer pairs: {question, answer, context}"""
+    CONVERSATION = "conversation"
+    """Multi-turn conversation: {messages: [{role, content}, ...]} with multiple exchanges"""
 
-    SFT = "sft"
-    """Supervised Fine-Tuning: {messages: [system, user, assistant]}"""
+    INSTRUCTION = "instruction"
+    """Single-turn instruction-following: {messages: [{role: "user"}, {role: "assistant"}]}"""
 
     TOOL_CALL = "tool_call"
     """Tool Calling: {messages: [..., {tool_calls: [...]}, {role: tool}, ...]}"""
-

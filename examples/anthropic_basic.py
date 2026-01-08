@@ -2,7 +2,7 @@
 Anthropic Basic Example - Dataset Generation
 =============================================
 
-Generate SFT datasets using Anthropic Claude models:
+Generate chat datasets using Anthropic Claude models:
 - Claude 4.5 Haiku for fast generation
 - Claude 4.5 Sonnet for quality grading
 
@@ -27,7 +27,7 @@ from synkro.examples import EXPENSE_POLICY
 pipeline = create_pipeline(
     model=Anthropic.CLAUDE_45_HAIKU,      # Fast, cost-effective generation
     grading_model=Anthropic.CLAUDE_45_SONNET,  # High-quality grading
-    dataset_type=DatasetType.SFT,         # Chat format for fine-tuning
+    dataset_type=DatasetType.CONVERSATION,         # Chat format for fine-tuning
     max_iterations=3,                     # Max refinement attempts per trace
 )
 
