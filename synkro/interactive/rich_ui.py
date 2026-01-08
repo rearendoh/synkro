@@ -170,6 +170,7 @@ class LogicMapDisplay:
                 await some_llm_call()
         """
         from rich.status import Status
+        self.console.print()  # Add space above spinner
         return Status(f"[cyan]{message}[/cyan]", spinner="dots", console=self.console)
 
     def display_session_state(
