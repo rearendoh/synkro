@@ -10,6 +10,7 @@ from pydantic import BaseModel
 # Configure litellm
 litellm.suppress_debug_info = True
 litellm.enable_json_schema_validation = True
+litellm.drop_params = True  # Drop unsupported params (e.g., temperature for gpt-5)
 
 # Suppress Pydantic serialization warnings from litellm response types
 warnings.filterwarnings(
