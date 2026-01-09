@@ -20,7 +20,7 @@ class Policy(BaseModel):
 
     Supports loading from multiple formats:
     - Plain text (.txt, .md)
-    - PDF documents (.pdf) - via marker-pdf
+    - PDF documents (.pdf) - via pymupdf
     - Word documents (.docx) - via mammoth
 
     Can load from:
@@ -218,25 +218,25 @@ class Policy(BaseModel):
     @classmethod
     def _from_pdf(cls, path: Path) -> "Policy":
         """
-        Parse PDF to markdown using marker-pdf.
+        Parse PDF to text using pymupdf.
 
         Args:
             path: Path to PDF file
 
         Returns:
-            Policy with extracted markdown text
+            Policy with extracted text
         """
         try:
-            from marker.convert import convert_single_pdf
-            from marker.models import load_all_models
+            import pymupdf
 
-            models = load_all_models()
-            markdown, _, _ = convert_single_pdf(str(path), models)
-            return cls(text=markdown, source=str(path))
+            doc = pymupdf.open(str(path))
+            text = "\n\n".join(page.get_text() for page in doc)
+            doc.close()
+            return cls(text=text, source=str(path))
         except ImportError:
             raise ImportError(
-                "marker-pdf is required for PDF support. "
-                "Install with: pip install marker-pdf"
+                "pymupdf is required for PDF support. "
+                "Install with: pip install pymupdf"
             )
 
     @classmethod
