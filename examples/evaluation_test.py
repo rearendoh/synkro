@@ -37,12 +37,3 @@ print(f"Distribution: {result.distribution}")
 output_path = "eval_scenarios.jsonl"
 result.save(output_path, format="langsmith")
 print(f"\nSaved to {output_path}")
-
-# Preview scenarios
-for i, scenario in enumerate(result.scenarios):
-    print(f"\n--- Scenario {i+1} ---")
-    print(f"Type: {scenario.scenario_type}")
-    print(f"Category: {scenario.category}")
-    print(f"Target rules: {scenario.target_rule_ids}")
-    print(f"User message: {scenario.user_message[:80]}...")
-    print(f"Expected outcome: {scenario.expected_outcome[:80]}...")

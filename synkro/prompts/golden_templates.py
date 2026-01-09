@@ -163,17 +163,26 @@ LOGIC MAP (Extracted Rules):
 
 CATEGORY: {category}
 
-GENERATE EXACTLY:
-- {positive_count} POSITIVE scenarios (happy path - user meets ALL criteria)
-- {negative_count} NEGATIVE scenarios (violation - user fails EXACTLY ONE criterion)
-- {edge_case_count} EDGE_CASE scenarios (boundary - user is at exact limits)
-- {irrelevant_count} IRRELEVANT scenarios (query not covered by policy)
+══════════════════════════════════════════════════════════════════════════════
+MANDATORY DISTRIBUTION - YOU MUST FOLLOW THIS EXACTLY:
+══════════════════════════════════════════════════════════════════════════════
+
+Generate EXACTLY {total_count} scenarios with THIS EXACT distribution:
+  • {positive_count} scenarios with scenario_type="positive"
+  • {negative_count} scenarios with scenario_type="negative"
+  • {edge_case_count} scenarios with scenario_type="edge_case"
+  • {irrelevant_count} scenarios with scenario_type="irrelevant"
+
+⚠️  CRITICAL: Each scenario's "scenario_type" field MUST match the required type.
+    Do NOT generate all positive scenarios. Follow the distribution above.
+
+══════════════════════════════════════════════════════════════════════════════
 
 SCENARIO TYPE DEFINITIONS:
 - POSITIVE: User meets ALL criteria, rules should approve/allow
 - NEGATIVE: User fails EXACTLY ONE criterion, rules should deny/reject
-- EDGE_CASE: User is at exact limits (e.g., day 30 of 30-day window)
-- IRRELEVANT: Query not covered by the policy at all
+- EDGE_CASE: User is at exact limits (e.g., exactly $50 when threshold is $50)
+- IRRELEVANT: Query not covered by the policy at all (unrelated topic)
 
 REQUIREMENTS FOR EACH SCENARIO:
 1. description: The user's EXACT words - a realistic request/question
@@ -208,7 +217,16 @@ GOOD EXAMPLE:
   description: "I'd like to submit an expense for a client lunch"
   context: "Expense amount: $180, Purchase date: 5 days ago, Has digital receipt, Has manager approval"
 
-Generate all {total_count} scenarios now, ensuring the exact counts per type."""
+══════════════════════════════════════════════════════════════════════════════
+FINAL REMINDER - DISTRIBUTION IS MANDATORY:
+══════════════════════════════════════════════════════════════════════════════
+You MUST generate:
+  • EXACTLY {positive_count} with scenario_type="positive"
+  • EXACTLY {negative_count} with scenario_type="negative"
+  • EXACTLY {edge_case_count} with scenario_type="edge_case"
+  • EXACTLY {irrelevant_count} with scenario_type="irrelevant"
+
+Generate all {total_count} scenarios now with the EXACT distribution above."""
 
 
 # =============================================================================
