@@ -55,6 +55,10 @@ class Generator:
         >>> tools = [ToolDefinition(name="search", description="...", parameters={})]
         >>> generator = Generator(dataset_type=DatasetType.TOOL_CALL, tools=tools)
         >>> dataset = generator.generate("Usage guidelines", traces=20)
+
+        >>> # Eval dataset with low temperature for deterministic outputs
+        >>> generator = Generator(dataset_type=DatasetType.EVALUATION, temperature=0.2)
+        >>> dataset = generator.generate(policy, traces=50)
     """
 
     def __init__(
@@ -71,6 +75,7 @@ class Generator:
         enable_hitl: bool = True,
         base_url: str | None = None,
         thinking: bool = False,
+        temperature: float = 0.7,
     ):
         """
         Initialize the Generator.
@@ -93,6 +98,9 @@ class Generator:
             thinking: Enable thinking mode with <think> tags in responses (default: False).
                 When enabled, assistant responses will include reasoning wrapped in
                 <think>...</think> tags, compatible with Qwen3 and DeepSeek-R1 formats.
+            temperature: Sampling temperature for generation (0.0-2.0, default: 0.7).
+                Lower values (0.1-0.3) produce more deterministic outputs for eval datasets.
+                Higher values (0.7-1.0) produce more diverse outputs for training data.
         """
         self.dataset_type = dataset_type
         self.mode_config = get_mode_config(dataset_type)
@@ -124,7 +132,7 @@ class Generator:
         self.grading_model = grading_model
 
         # Create LLM clients
-        self.generation_llm = LLM(model=generation_model, base_url=base_url)
+        self.generation_llm = LLM(model=generation_model, base_url=base_url, temperature=temperature)
         self.grading_llm = LLM(model=grading_model, base_url=base_url)
         
         # Create factory for component creation

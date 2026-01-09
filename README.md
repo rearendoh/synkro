@@ -5,7 +5,8 @@ Turn policies, handbooks, and documentation into high-quality training data for 
 ## Features
 
 - **Quality Evaluation** - Each response is graded and automatically refined if it fails
-- **Multiple Formats** - Conversation (multi-turn), Instruction (single-turn), and Tool Calling
+- **Multiple Formats** - Conversation (multi-turn), Instruction (single-turn), Evaluation (Q&A), and Tool Calling
+- **Eval Platform Support** - Export to LangSmith, Langfuse, or generic Q&A format
 - **Tool Call Training** - Generate OpenAI function calling format for teaching models to use custom tools
 - **Top LLM Providers** - OpenAI, Anthropic, Google, and local models (Ollama, vLLM)
 - **File Support** - PDF, DOCX, TXT, Markdown, URLs
@@ -63,9 +64,10 @@ dataset = pipeline.generate(policy)
 
 | Type | Turns | Output Formats | Best For |
 |------|-------|----------------|----------|
-| **CONVERSATION** | Multi | messages | Fine-tuning chat models |
-| **INSTRUCTION** | 1 | messages | Instruction-following models |
-| **TOOL_CALL** | Multi | OpenAI function calling, ChatML | Teaching tool use |
+| **CONVERSATION** | Multi | sft, chatml | Fine-tuning chat models |
+| **INSTRUCTION** | 1 | sft, chatml | Instruction-following models |
+| **EVALUATION** | 1 | qa, langsmith, langfuse | LLM evaluation & benchmarks |
+| **TOOL_CALL** | Multi | tool_call, chatml | Teaching tool use |
 
 ### Conversation (Default)
 
@@ -99,6 +101,50 @@ Output (single-turn):
   {"role": "user", "content": "What's the approval process for $350?"},
   {"role": "assistant", "content": "For a $350 expense, you need manager approval. Submit the expense report with receipt..."}
 ]}
+```
+
+### Evaluation
+
+Generate Q&A datasets for LLM evaluation with ground truth:
+
+```python
+pipeline = create_pipeline(dataset_type=DatasetType.EVALUATION)
+dataset = pipeline.generate(policy, traces=50)
+
+# Save in different formats
+dataset.save("eval.jsonl", format="qa")         # Generic Q&A
+dataset.save("eval.jsonl", format="langsmith")  # LangSmith format
+dataset.save("eval.jsonl", format="langfuse")   # Langfuse format
+```
+
+Output (`format="qa"`):
+```json
+{
+  "question": "Can I submit a $200 expense without a receipt?",
+  "answer": "All expenses require receipts per policy...",
+  "expected_outcome": "Deny - missing receipt violates R003",
+  "ground_truth_rules": ["R003", "R005"],
+  "difficulty": "negative",
+  "category": "Receipt Requirements"
+}
+```
+
+Output (`format="langsmith"`):
+```json
+{
+  "inputs": {"question": "...", "context": "..."},
+  "outputs": {"answer": "..."},
+  "metadata": {"expected_outcome": "...", "ground_truth_rules": [...]}
+}
+```
+
+Output (`format="langfuse"`):
+```json
+{
+  "input": {"question": "...", "context": "..."},
+  "expectedOutput": {"answer": "...", "expected_outcome": "..."},
+  "metadata": {"ground_truth_rules": [...], "difficulty": "..."}
+}
 ```
 
 ### Tool Calling
@@ -245,7 +291,7 @@ synkro demo
 - `--traces, -n` - Number of traces (default: 20)
 - `--output, -o` - Output file path
 - `--model, -m` - Model for generation
-- `--format, -f` - Output format: `sft` (default) or `qa`
+- `--format, -f` - Output format: `sft`, `qa`, `langsmith`, `langfuse`, `tool_call`, `chatml`
 - `--provider, -p` - LLM provider for local models (`ollama`, `vllm`)
 - `--endpoint, -e` - Custom API endpoint URL
 - `--interactive/-i, --no-interactive/-I` - Review/edit extracted rules before generation (default: on)
