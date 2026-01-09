@@ -169,16 +169,11 @@ class RichReporter:
         return Status(f"[cyan]{message}[/cyan]", spinner="dots", console=self.console)
     
     def on_start(self, traces: int, model: str, dataset_type: str) -> None:
-        from rich.panel import Panel
-        
         self.console.print()
-        self.console.print(Panel.fit(
-            f"[bold]Generating {traces} traces[/bold]\n"
-            f"[dim]Type: {dataset_type.upper()} | Model: {model}[/dim]",
-            title="[cyan]synkro[/cyan]",
-            border_style="cyan"
-        ))
-        self.console.print()
+        self.console.print(
+            f"[cyan]⚡ Generating {traces} traces[/cyan] "
+            f"[dim]| {dataset_type.upper()} | {model}[/dim]"
+        )
     
     def on_plan_complete(self, plan: Plan) -> None:
         from rich.table import Table
