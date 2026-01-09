@@ -186,6 +186,18 @@ high_quality = dataset.filter(passed=True)
 high_quality.save("training.jsonl")
 ```
 
+## Cost & Performance
+
+Approximate costs using Gemini 2.5 Flash (multi-turn conversations):
+
+| Traces | LLM Calls | Time | Cost |
+|--------|-----------|------|------|
+| 100 | ~335 | ~13 min | ~$3 |
+| 500 | ~1,675 | ~1 hour | ~$14 |
+| 1000 | ~3,350 | ~2 hours | ~$28 |
+
+*Based on ~3.3 LLM calls per trace (generation + grading) with max_iterations=3. Actual costs vary by policy complexity and turn count.*
+
 ## Local LLMs
 
 Run with Ollama, vLLM, or any OpenAI-compatible endpoint:
