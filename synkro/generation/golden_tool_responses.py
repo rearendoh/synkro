@@ -141,12 +141,27 @@ class GoldenToolCallResponseGenerator:
         ... )
     """
 
+    # Instruction to inject when thinking mode is enabled
+    THINKING_INSTRUCTION = """
+THINKING MODE:
+Your assistant response MUST include reasoning wrapped in <think> and </think> tags.
+Place your step-by-step reasoning inside the think tags BEFORE your actual response.
+
+Format:
+<think>
+[Your reasoning about which rules apply, tool usage decisions, etc.]
+</think>
+
+[Your actual response to the user]
+"""
+
     def __init__(
         self,
         tools: list[ToolDefinition],
         llm: LLM | None = None,
         simulator: "ToolSimulator | None" = None,
         model: Model = OpenAI.GPT_4O_MINI,
+        thinking: bool = False,
     ):
         """
         Initialize the Golden Tool Call Response Generator.
@@ -156,11 +171,13 @@ class GoldenToolCallResponseGenerator:
             llm: LLM client to use (creates one if not provided)
             simulator: Tool simulator for generating tool responses
             model: Model to use if creating LLM
+            thinking: Enable thinking mode with <think> tags in responses
         """
         self.tools = tools
         self.tools_by_name = {t.name: t for t in tools}
         self.llm = llm or LLM(model=model, temperature=0.7)
         self.simulator = simulator
+        self.thinking = thinking
         self._follow_up_gen: "FollowUpGenerator | None" = None
 
     @property
@@ -410,6 +427,10 @@ Synthesize the tool results into a natural, helpful response.
 - Don't expose raw JSON or technical details
 - Be conversational and helpful"""
 
+        # Inject thinking instruction if enabled
+        if self.thinking:
+            prompt = prompt + self.THINKING_INSTRUCTION
+
         synthesis = await self.llm.generate_structured(prompt, GoldenToolSynthesis)
         return synthesis.response
 
@@ -439,6 +460,10 @@ POLICY GUIDELINES:
 
 No tools are needed for this request. Provide a direct, helpful response
 applying the relevant rules from the Logic Map."""
+
+        # Inject thinking instruction if enabled
+        if self.thinking:
+            prompt = prompt + self.THINKING_INSTRUCTION
 
         synthesis = await self.llm.generate_structured(prompt, GoldenToolSynthesis)
         return synthesis.response
@@ -716,6 +741,10 @@ applying the relevant rules from the Logic Map."""
             cumulative_rules_applied=", ".join(cumulative_rules_applied) or "None yet",
             policy_text=policy_text,
         )
+
+        # Inject thinking instruction if enabled
+        if self.thinking:
+            prompt = prompt + self.THINKING_INSTRUCTION
 
         synthesis = await self.llm.generate_structured(
             prompt, GoldenMultiTurnToolSynthesis

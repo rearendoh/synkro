@@ -323,6 +323,25 @@ policy = Policy.from_file("policies/")  # Loads all PDF, DOCX, TXT, MD files
 dataset = pipeline.generate(policy, traces=100)
 ```
 
+### Thinking Mode
+
+Generate training data with explicit reasoning in `<think>` tags, compatible with Qwen3 and DeepSeek-R1:
+
+```python
+pipeline = create_pipeline(thinking=True)
+dataset = pipeline.generate(policy, traces=50)
+```
+
+Output:
+```json
+{"messages": [
+  {"role": "user", "content": "Can I expense a $350 team dinner?"},
+  {"role": "assistant", "content": "<think>\nLet me check the expense policy...\n- Rule: Expenses over $50 require manager approval\n- $350 exceeds the $50 threshold\n- Manager approval is required\n</think>\n\nFor a $350 team dinner, you'll need manager approval since it exceeds the $50 threshold. Please submit your expense report with the receipt and request approval from your manager."}
+]}
+```
+
+Works with all dataset types (`CONVERSATION`, `INSTRUCTION`, `TOOL_CALL`).
+
 ## Logic Map Inspection
 
 Access the extracted rules programmatically:

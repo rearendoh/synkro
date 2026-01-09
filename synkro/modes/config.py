@@ -48,12 +48,13 @@ def get_mode_config(dataset_type: "DatasetType") -> ModeConfig:
         >>> from synkro import DatasetType
         >>> config = get_mode_config(DatasetType.CONVERSATION)
     """
-    from synkro.modes.conversation import CONVERSATION_CONFIG, INSTRUCTION_CONFIG
+    from synkro.modes.conversation import CONVERSATION_CONFIG, INSTRUCTION_CONFIG, EVALUATION_CONFIG
     from synkro.modes.tool_call import TOOL_CALL_CONFIG
 
     configs = {
         "conversation": CONVERSATION_CONFIG,
         "instruction": INSTRUCTION_CONFIG,
+        "evaluation": EVALUATION_CONFIG,
         "tool_call": TOOL_CALL_CONFIG,
     }
 

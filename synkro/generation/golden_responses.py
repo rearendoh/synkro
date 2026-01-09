@@ -42,10 +42,25 @@ class GoldenResponseGenerator:
         ... )
     """
 
+    # Instruction to inject when thinking mode is enabled
+    THINKING_INSTRUCTION = """
+THINKING MODE:
+Your assistant response MUST include reasoning wrapped in <think> and </think> tags.
+Place your step-by-step reasoning inside the think tags BEFORE your actual response.
+
+Format:
+<think>
+[Your reasoning about which rules apply, why they apply/don't apply, etc.]
+</think>
+
+[Your actual response to the user]
+"""
+
     def __init__(
         self,
         llm: LLM | None = None,
         model: Model = OpenAI.GPT_4O_MINI,
+        thinking: bool = False,
     ):
         """
         Initialize the Golden Response Generator.
@@ -53,8 +68,10 @@ class GoldenResponseGenerator:
         Args:
             llm: LLM client to use (creates one if not provided)
             model: Model to use if creating LLM
+            thinking: Enable thinking mode with <think> tags in responses
         """
         self.llm = llm or LLM(model=model, temperature=0.7)
+        self.thinking = thinking
 
     async def generate_single(
         self,
@@ -102,6 +119,10 @@ class GoldenResponseGenerator:
             scenario_type=scenario.scenario_type.value.upper(),
             expected_outcome=scenario.expected_outcome,
         )
+
+        # Inject thinking instruction if enabled
+        if self.thinking:
+            prompt = prompt + self.THINKING_INSTRUCTION
 
         # Generate structured output
         result = await self.llm.generate_structured(prompt, GoldenTraceOutput)
@@ -158,6 +179,10 @@ class GoldenResponseGenerator:
             scenario_type=scenario.scenario_type.value.upper(),
             target_turns=target_turns,
         )
+
+        # Inject thinking instruction if enabled
+        if self.thinking:
+            prompt = prompt + self.THINKING_INSTRUCTION
 
         # Generate structured output
         result = await self.llm.generate_structured(prompt, GoldenTraceOutput)

@@ -49,6 +49,11 @@ class Scenario(BaseModel):
     context: str = Field(description="Additional context and background")
     category: str | None = Field(default=None, description="Category this scenario belongs to")
 
+    # Evaluation fields (populated from GoldenScenario)
+    scenario_type: str | None = Field(default=None, description="Type: positive, negative, edge_case, irrelevant")
+    target_rule_ids: list[str] | None = Field(default=None, description="Rule IDs this scenario tests")
+    expected_outcome: str | None = Field(default=None, description="Expected behavior based on rules")
+
 
 class GradeResult(BaseModel):
     """Result of grading a trace."""

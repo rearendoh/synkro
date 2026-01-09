@@ -292,12 +292,15 @@ class GoldenScenario(BaseModel):
     )
 
     def to_base_scenario(self) -> "Scenario":
-        """Convert to base Scenario type for compatibility."""
+        """Convert to base Scenario type for compatibility, preserving eval fields."""
         from synkro.types.core import Scenario
         return Scenario(
             description=self.description,
             context=self.context,
             category=self.category,
+            scenario_type=self.scenario_type.value if self.scenario_type else None,
+            target_rule_ids=self.target_rule_ids,
+            expected_outcome=self.expected_outcome,
         )
 
 

@@ -50,13 +50,14 @@ def create_pipeline(
     checkpoint_dir: str | None = None,
     enable_hitl: bool = True,
     base_url: str | None = None,
+    thinking: bool = False,
 ) -> Generator:
     """
     Create a pipeline for generating training datasets.
 
     Args:
         model: Model enum for generation (default: OpenAI.GPT_5_MINI)
-        dataset_type: Type of dataset - CONVERSATION, INSTRUCTION, or TOOL_CALL (default: CONVERSATION)
+        dataset_type: Type of dataset - CONVERSATION, INSTRUCTION, EVALUATION, or TOOL_CALL (default: CONVERSATION)
         grading_model: Model enum for grading (default: OpenAI.GPT_52)
         max_iterations: Max refinement iterations per trace (default: 3)
         skip_grading: Skip grading phase for faster generation (default: False)
@@ -67,6 +68,9 @@ def create_pipeline(
         checkpoint_dir: Directory for checkpoints. Enables resumable generation.
         enable_hitl: Enable Human-in-the-Loop Logic Map editing (default: False)
         base_url: Optional API base URL for local LLM providers (Ollama, vLLM, etc.)
+        thinking: Enable thinking mode with <think> tags in responses (default: False).
+            When enabled, assistant responses will include reasoning wrapped in
+            <think>...</think> tags, compatible with Qwen3 and DeepSeek-R1 formats.
 
     Returns:
         Generator instance ready to use
@@ -120,6 +124,7 @@ def create_pipeline(
         checkpoint_dir=checkpoint_dir,
         enable_hitl=enable_hitl,
         base_url=base_url,
+        thinking=thinking,
     )
 
 

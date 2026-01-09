@@ -70,6 +70,7 @@ class Generator:
         checkpoint_dir: str | Path | None = None,
         enable_hitl: bool = True,
         base_url: str | None = None,
+        thinking: bool = False,
     ):
         """
         Initialize the Generator.
@@ -89,6 +90,9 @@ class Generator:
             enable_hitl: Enable Human-in-the-Loop Logic Map editing. When enabled,
                 pauses after Logic Map extraction to allow interactive refinement.
             base_url: Optional API base URL for local LLM providers (Ollama, vLLM, etc.)
+            thinking: Enable thinking mode with <think> tags in responses (default: False).
+                When enabled, assistant responses will include reasoning wrapped in
+                <think>...</think> tags, compatible with Qwen3 and DeepSeek-R1 formats.
         """
         self.dataset_type = dataset_type
         self.mode_config = get_mode_config(dataset_type)
@@ -96,6 +100,7 @@ class Generator:
         self.skip_grading = skip_grading
         self.tools = tools
         self.turns = turns
+        self.thinking = thinking
         self.checkpoint_dir = Path(checkpoint_dir) if checkpoint_dir else None
 
         # Create checkpoint manager if checkpointing enabled
@@ -110,8 +115,8 @@ class Generator:
         if dataset_type == DatasetType.TOOL_CALL and not tools:
             raise ValueError("TOOL_CALL dataset type requires tools parameter")
 
-        # Force turns=1 for INSTRUCTION type
-        if dataset_type == DatasetType.INSTRUCTION:
+        # Force turns=1 for INSTRUCTION and EVALUATION types
+        if dataset_type in (DatasetType.INSTRUCTION, DatasetType.EVALUATION):
             self.turns = 1
 
         # Store model info for reporting
@@ -128,6 +133,7 @@ class Generator:
             grading_llm=self.grading_llm,
             mode_config=self.mode_config,
             tools=tools,
+            thinking=thinking,
         )
 
         # Reporter for progress output

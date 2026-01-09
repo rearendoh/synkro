@@ -63,20 +63,23 @@ class ComponentFactory:
         grading_llm: LLM,
         mode_config: ModeConfig,
         tools: list["ToolDefinition"] | None = None,
+        thinking: bool = False,
     ):
         """
         Initialize the factory.
-        
+
         Args:
             generation_llm: LLM client for generation tasks (scenarios, responses, refinement)
             grading_llm: LLM client for grading and planning (typically stronger model)
             mode_config: Configuration for the dataset type (prompts, etc.)
             tools: Optional list of tool definitions for tool_call dataset type
+            thinking: Enable thinking mode with <think> tags in responses
         """
         self.generation_llm = generation_llm
         self.grading_llm = grading_llm
         self.mode_config = mode_config
         self.tools = tools or []
+        self.thinking = thinking
     
     def create_planner(self) -> Planner:
         """Create a Planner instance."""
@@ -216,7 +219,7 @@ class ComponentFactory:
         and rule citations.
         """
         from synkro.generation.golden_responses import GoldenResponseGenerator
-        return GoldenResponseGenerator(llm=self.generation_llm)
+        return GoldenResponseGenerator(llm=self.generation_llm, thinking=self.thinking)
 
     def create_golden_tool_call_generator(self) -> "GoldenToolCallResponseGenerator":
         """
@@ -235,6 +238,7 @@ class ComponentFactory:
             tools=self.tools,
             llm=self.generation_llm,
             simulator=simulator,
+            thinking=self.thinking,
         )
 
     def create_verifier(self) -> "TraceVerifier":
