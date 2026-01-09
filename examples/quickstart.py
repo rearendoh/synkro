@@ -34,11 +34,13 @@ pipeline = create_pipeline(
     grading_model=Google.GEMINI_25_FLASH, # Quality grading
     #grading_model=Google.GEMINI_25_PRO, # Quality grading (stronger = better filtering)
     dataset_type=DatasetType.CONVERSATION,      # Chat format for fine-tuning
-    max_iterations=3,                   # Max refinement iterations per trace
-    #skip_grading=True,                  # Skip grading phase for faster generation
+    #max_iterations=3,                   # Max refinement iterations per trace
+    skip_grading=True,                  # Skip grading phase for faster generation
+    enable_hitl=False,                  # Disable HITL for non-interactive testing
 )
 
-# Output: Only traces that passed quality checks
+# Output: Only traces th
+#at passed quality checks
 dataset = pipeline.generate(EXPENSE_POLICY, traces=20)
 
 # Filter to only passing traces (removes failed grading)
@@ -46,6 +48,3 @@ passing = dataset.filter(passed=True)
 
 # Save to JSONL file (ready for training)
 passing.save()
-
-# View summary with quality metrics
-print(passing.summary())

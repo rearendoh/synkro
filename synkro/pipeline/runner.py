@@ -216,6 +216,10 @@ class GenerationPipeline:
 
         self.reporter.on_logic_map_complete(logic_map)
 
+        # Reset grading LLM call counter after setup phases
+        # (planner and logic extractor use grading_llm but aren't "grading" calls)
+        self.factory.grading_llm.reset_tracking()
+
         # =====================================================================
         # STAGE 2: Scenario Synthesis (The Adversary)
         # =====================================================================
