@@ -36,7 +36,7 @@ pipeline = create_pipeline(
     dataset_type=DatasetType.CONVERSATION,      # Chat format for fine-tuning
     #max_iterations=3,                   # Max refinement iterations per trace
     skip_grading=True,                  # Skip grading phase for faster generation
-    enable_hitl=False,                  # Disable HITL for non-interactive testing
+    #enable_hitl=False,                  # Disable HITL for non-interactive testing
 )
 
 # Output: Only traces th
