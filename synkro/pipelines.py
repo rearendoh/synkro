@@ -51,6 +51,7 @@ def create_pipeline(
     enable_hitl: bool = True,
     base_url: str | None = None,
     thinking: bool = False,
+    temperature: float = 0.7,
 ) -> Generator:
     """
     Create a pipeline for generating training datasets.
@@ -71,6 +72,9 @@ def create_pipeline(
         thinking: Enable thinking mode with <think> tags in responses (default: False).
             When enabled, assistant responses will include reasoning wrapped in
             <think>...</think> tags, compatible with Qwen3 and DeepSeek-R1 formats.
+        temperature: Sampling temperature for generation (0.0-2.0, default: 0.7).
+            Lower values (0.1-0.3) produce more deterministic outputs for eval datasets.
+            Higher values (0.7-1.0) produce more diverse outputs for training data.
 
     Returns:
         Generator instance ready to use
@@ -125,6 +129,7 @@ def create_pipeline(
         enable_hitl=enable_hitl,
         base_url=base_url,
         thinking=thinking,
+        temperature=temperature,
     )
 
 

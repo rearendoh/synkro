@@ -122,6 +122,7 @@ def generate(
     return_logic_map: bool = False,
     enable_hitl: bool = True,
     base_url: str | None = None,
+    temperature: float = 0.7,
 ) -> Dataset | GenerationResult:
     """
     Generate training traces from a policy document.
@@ -142,6 +143,9 @@ def generate(
         return_logic_map: If True, return GenerationResult with Logic Map access
         enable_hitl: Enable Human-in-the-Loop Logic Map editing (default: False)
         base_url: Optional API base URL for local LLM providers (Ollama, vLLM, etc.)
+        temperature: Sampling temperature for generation (0.0-2.0, default: 0.7).
+            Lower values (0.1-0.3) produce more deterministic outputs for eval datasets.
+            Higher values (0.7-1.0) produce more diverse outputs for training data.
 
     Returns:
         Dataset (default) or GenerationResult if return_logic_map=True
@@ -181,6 +185,7 @@ def generate(
         turns=turns,
         enable_hitl=enable_hitl,
         base_url=base_url,
+        temperature=temperature,
     )
 
     return generator.generate(policy, traces=traces, return_logic_map=return_logic_map)
