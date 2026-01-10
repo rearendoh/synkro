@@ -28,9 +28,9 @@ def generate(
         help="Number of traces to generate",
     ),
     format: str = typer.Option(
-        "sft",
+        "messages",
         "--format", "-f",
-        help="Output format: sft or qa",
+        help="Output format: messages, qa, langsmith, langfuse, tool_call, chatml",
     ),
     model: str = typer.Option(
         "gpt-4o-mini",

@@ -1,4 +1,4 @@
-"""SFT (Supervised Fine-Tuning) formatter."""
+"""Messages formatter for training data."""
 
 import json
 from pathlib import Path
@@ -8,11 +8,10 @@ if TYPE_CHECKING:
     from synkro.types.core import Trace
 
 
-class SFTFormatter:
+class MessagesFormatter:
     """
-    Format traces for Supervised Fine-Tuning (SFT).
+    Format traces as messages for fine-tuning.
 
-    SFT format is a simple array of conversations, each with messages.
     This is the standard format used by OpenAI, HuggingFace, and most
     fine-tuning platforms.
 
@@ -23,7 +22,7 @@ class SFTFormatter:
 
     def __init__(self, include_metadata: bool = False):
         """
-        Initialize the SFT formatter.
+        Initialize the messages formatter.
 
         Args:
             include_metadata: If True, include trace metadata in output
@@ -32,13 +31,13 @@ class SFTFormatter:
 
     def format(self, traces: list["Trace"]) -> list[dict]:
         """
-        Format traces as SFT training examples.
+        Format traces as training examples.
 
         Args:
             traces: List of traces to format
 
         Returns:
-            List of SFT examples (dicts with 'messages' key)
+            List of examples (dicts with 'messages' key)
         """
         examples = []
 
@@ -69,11 +68,7 @@ class SFTFormatter:
             path: Output file path (should end in .jsonl)
         """
         path = Path(path)
-        print(f"DEBUG SFTFormatter: Received {len(traces)} traces")
         examples = self.format(traces)
-        print(f"DEBUG SFTFormatter: Formatted into {len(examples)} examples")
-        if examples:
-            print(f"DEBUG SFTFormatter: First example has {len(examples[0].get('messages', []))} messages")
 
         with open(path, "w") as f:
             for example in examples:
@@ -91,4 +86,3 @@ class SFTFormatter:
         """
         examples = self.format(traces)
         return "\n".join(json.dumps(e) for e in examples)
-

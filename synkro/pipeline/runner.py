@@ -279,7 +279,7 @@ class GenerationPipeline:
             policy: The policy to generate from
             traces: Target number of traces
             model: Model name (for reporting)
-            dataset_type: Dataset type (sft, qa, tool_call)
+            dataset_type: Dataset type (conversation, instruction, evaluation, tool_call)
             turns: Conversation turns per trace. Use int for fixed turns, or "auto"
                 for policy complexity-driven turns
             return_result: If True, return GenerationResult with logic_map access

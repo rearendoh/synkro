@@ -38,7 +38,7 @@ dataset = pipeline.generate(EXPENSE_POLICY, traces=20)
 passing = dataset.filter(passed=True)
 
 # Save to JSONL file
-passing.save("anthropic_sft.jsonl")
+passing.save("anthropic_training.jsonl")
 
 # View summary
 print(passing.summary())

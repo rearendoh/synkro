@@ -114,7 +114,7 @@ dataset = pipeline.generate(policy_from_folder, traces=5)
 
 # Save dataset
 output_file = "multi_file_training.jsonl"
-dataset.save(output_file, format="sft")
+dataset.save(output_file)
 
 print()
 print("=" * 80)

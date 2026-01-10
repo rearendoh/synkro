@@ -64,8 +64,8 @@ dataset = pipeline.generate(policy)
 
 | Type | Turns | Output Formats | Best For |
 |------|-------|----------------|----------|
-| **CONVERSATION** | Multi | sft, chatml | Fine-tuning chat models |
-| **INSTRUCTION** | 1 | sft, chatml | Instruction-following models |
+| **CONVERSATION** | Multi | messages, chatml | Fine-tuning chat models |
+| **INSTRUCTION** | 1 | messages, chatml | Instruction-following models |
 | **EVALUATION** | 1 | qa, langsmith, langfuse | LLM evaluation & benchmarks |
 | **TOOL_CALL** | Multi | tool_call, chatml | Teaching tool use |
 
@@ -362,7 +362,7 @@ synkro demo
 - `--traces, -n` - Number of traces (default: 20)
 - `--output, -o` - Output file path
 - `--model, -m` - Model for generation
-- `--format, -f` - Output format: `sft`, `qa`, `langsmith`, `langfuse`, `tool_call`, `chatml`
+- `--format, -f` - Output format: `messages`, `qa`, `langsmith`, `langfuse`, `tool_call`, `chatml`
 - `--provider, -p` - LLM provider for local models (`ollama`, `vllm`)
 - `--endpoint, -e` - Custom API endpoint URL
 - `--interactive/-i, --no-interactive/-I` - Review/edit extracted rules before generation (default: on)

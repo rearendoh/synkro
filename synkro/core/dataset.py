@@ -212,19 +212,19 @@ class Dataset(BaseModel):
         """Get unique categories in the dataset."""
         return list(set(t.scenario.category for t in self.traces if t.scenario.category))
 
-    def save(self, path: str | Path | None = None, format: str = "sft") -> "Dataset":
+    def save(self, path: str | Path | None = None, format: str = "messages") -> "Dataset":
         """
         Save dataset to a JSONL file.
 
         Args:
             path: Output file path (auto-generated if not provided)
-            format: Output format - "sft", "qa", "langsmith", "langfuse", "tool_call", or "chatml"
+            format: Output format - "messages", "qa", "langsmith", "langfuse", "tool_call", or "chatml"
 
         Returns:
             Self for method chaining
 
         Example:
-            >>> dataset.save()  # Auto-names: synkro_sft_2024-01-15.jsonl
+            >>> dataset.save()  # Auto-names: synkro_messages_2024-01-15.jsonl
             >>> dataset.save("training.jsonl")
             >>> dataset.save("eval.jsonl", format="qa")  # Q&A with ground truth
             >>> dataset.save("eval.jsonl", format="langsmith")  # LangSmith format
@@ -233,7 +233,7 @@ class Dataset(BaseModel):
             >>> dataset.save("chatml.jsonl", format="chatml")
         """
         from synkro.formatters import (
-            SFTFormatter, ToolCallFormatter, ChatMLFormatter,
+            MessagesFormatter, ToolCallFormatter, ChatMLFormatter,
             QAFormatter, LangSmithFormatter, LangfuseFormatter,
         )
 
@@ -244,11 +244,8 @@ class Dataset(BaseModel):
 
         path = Path(path)
 
-        # Debug: Check if traces exist
-        print(f"DEBUG: Dataset has {len(self.traces)} traces to save")
-
-        if format == "sft":
-            SFTFormatter().save(self.traces, path)
+        if format == "messages":
+            MessagesFormatter().save(self.traces, path)
         elif format == "qa":
             QAFormatter().save(self.traces, path)
         elif format == "langsmith":
@@ -260,7 +257,7 @@ class Dataset(BaseModel):
         elif format == "chatml":
             ChatMLFormatter().save(self.traces, path)
         else:
-            raise ValueError(f"Unknown format: {format}. Use 'sft', 'qa', 'langsmith', 'langfuse', 'tool_call', or 'chatml'")
+            raise ValueError(f"Unknown format: {format}. Use 'messages', 'qa', 'langsmith', 'langfuse', 'tool_call', or 'chatml'")
         
         # Print confirmation
         file_size = path.stat().st_size
@@ -269,23 +266,23 @@ class Dataset(BaseModel):
         
         return self
 
-    def to_jsonl(self, format: str = "sft") -> str:
+    def to_jsonl(self, format: str = "messages") -> str:
         """
         Convert dataset to JSONL string.
 
         Args:
-            format: Output format - "sft", "qa", "langsmith", "langfuse", "tool_call", or "chatml"
+            format: Output format - "messages", "qa", "langsmith", "langfuse", "tool_call", or "chatml"
 
         Returns:
             JSONL formatted string
         """
         from synkro.formatters import (
-            SFTFormatter, ToolCallFormatter, ChatMLFormatter,
+            MessagesFormatter, ToolCallFormatter, ChatMLFormatter,
             QAFormatter, LangSmithFormatter, LangfuseFormatter,
         )
 
-        if format == "sft":
-            return SFTFormatter().to_jsonl(self.traces)
+        if format == "messages":
+            return MessagesFormatter().to_jsonl(self.traces)
         elif format == "qa":
             return QAFormatter().to_jsonl(self.traces)
         elif format == "langsmith":
@@ -297,14 +294,14 @@ class Dataset(BaseModel):
         elif format == "chatml":
             return ChatMLFormatter().to_jsonl(self.traces)
         else:
-            raise ValueError(f"Unknown format: {format}. Use 'sft', 'qa', 'langsmith', 'langfuse', 'tool_call', or 'chatml'")
+            raise ValueError(f"Unknown format: {format}. Use 'messages', 'qa', 'langsmith', 'langfuse', 'tool_call', or 'chatml'")
 
-    def to_hf_dataset(self, format: str = "sft"):
+    def to_hf_dataset(self, format: str = "messages"):
         """
         Convert to HuggingFace Dataset.
 
         Args:
-            format: Output format - "sft", "qa", "langsmith", "langfuse", "tool_call", or "chatml"
+            format: Output format - "messages", "qa", "langsmith", "langfuse", "tool_call", or "chatml"
 
         Returns:
             HuggingFace datasets.Dataset object
@@ -327,12 +324,12 @@ class Dataset(BaseModel):
             )
 
         from synkro.formatters import (
-            SFTFormatter, ToolCallFormatter, ChatMLFormatter,
+            MessagesFormatter, ToolCallFormatter, ChatMLFormatter,
             QAFormatter, LangSmithFormatter, LangfuseFormatter,
         )
 
-        if format == "sft":
-            examples = SFTFormatter(include_metadata=True).format(self.traces)
+        if format == "messages":
+            examples = MessagesFormatter(include_metadata=True).format(self.traces)
         elif format == "qa":
             examples = QAFormatter().format(self.traces)
         elif format == "langsmith":
@@ -344,7 +341,7 @@ class Dataset(BaseModel):
         elif format == "chatml":
             examples = ChatMLFormatter().format(self.traces)
         else:
-            raise ValueError(f"Unknown format: {format}. Use 'sft', 'qa', 'langsmith', 'langfuse', 'tool_call', or 'chatml'")
+            raise ValueError(f"Unknown format: {format}. Use 'messages', 'qa', 'langsmith', 'langfuse', 'tool_call', or 'chatml'")
 
         return HFDataset.from_list(examples)
 
@@ -354,7 +351,7 @@ class Dataset(BaseModel):
     def push_to_hub(
         self,
         repo_id: str,
-        format: str = "sft",
+        format: str = "messages",
         private: bool = False,
         split: str = "train",
         token: str | None = None,
@@ -363,8 +360,8 @@ class Dataset(BaseModel):
         Push dataset directly to HuggingFace Hub.
 
         Args:
-            repo_id: HuggingFace repo ID (e.g., "my-org/policy-sft")
-            format: Output format - "sft", "qa", or "tool_call"
+            repo_id: HuggingFace repo ID (e.g., "my-org/policy-data")
+            format: Output format - "messages", "qa", or "tool_call"
             private: Whether the repo should be private
             split: Dataset split name (default: "train")
             token: HuggingFace token (uses cached token if not provided)
@@ -373,8 +370,8 @@ class Dataset(BaseModel):
             URL of the uploaded dataset
 
         Example:
-            >>> dataset.push_to_hub("my-org/policy-sft")
-            >>> dataset.push_to_hub("my-org/policy-sft", private=True)
+            >>> dataset.push_to_hub("my-org/policy-data")
+            >>> dataset.push_to_hub("my-org/policy-data", private=True)
         """
         hf_dataset = self.to_hf_dataset(format=format)
         hf_dataset.push_to_hub(

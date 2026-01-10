@@ -107,8 +107,8 @@ def test_dataset_filter():
 
 
 def test_formatter_output():
-    """Test SFT formatter output."""
-    from synkro.formatters import SFTFormatter
+    """Test messages formatter output."""
+    from synkro.formatters import MessagesFormatter
     from synkro import Trace, Scenario, Message
 
     trace = Trace(
@@ -120,7 +120,7 @@ def test_formatter_output():
         scenario=Scenario(description="Test", context="Context"),
     )
 
-    formatter = SFTFormatter()
+    formatter = MessagesFormatter()
     output = formatter.format([trace])
 
     assert len(output) == 1

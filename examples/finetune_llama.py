@@ -27,10 +27,10 @@ from synkro.core.policy import Policy
 # STEP 1: Generate Training Data (skip if already exists)
 # =============================================================================
 
-train_file = Path("train_sft.jsonl")
+train_file = Path("train.jsonl")
 
 if train_file.exists():
-    print("📁 Found existing train_sft.jsonl, skipping data generation...")
+    print("📁 Found existing train.jsonl, skipping data generation...")
 else:
     print("📚 Step 1: Loading policy...")
     policy_path = Path(__file__).parent / "policies" / "Expense-Reimbursement-Policy.docx"
@@ -47,7 +47,7 @@ else:
     dataset = pipeline.generate(policy, traces=100)
 
     # Save dataset
-    dataset.save("train_sft.jsonl", format="sft")  # For supervised fine-tuning
+    dataset.save("train.jsonl")  # Messages format for fine-tuning
 
     print(f"✅ Generated {len(dataset)} traces ({dataset.passing_rate:.0%} pass rate)")
 
@@ -62,7 +62,7 @@ import tinker
 from tinker import types
 
 # Load our generated dataset
-train_data = load_dataset("json", data_files="train_sft.jsonl", split="train")
+train_data = load_dataset("json", data_files="train.jsonl", split="train")
 
 # Model to fine-tune
 BASE_MODEL = "meta-llama/Llama-3.1-8B-Instruct"

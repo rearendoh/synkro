@@ -49,7 +49,7 @@ class CheckpointManager:
 
     Examples:
         >>> manager = CheckpointManager("./checkpoints")
-        >>> manager.save_logic_map(logic_map, policy_hash, 100, "sft")
+        >>> manager.save_logic_map(logic_map, policy_hash, 100, "messages")
         >>> manager.save_scenarios(scenarios, distribution)
         >>> manager.save_trace(trace, scenario_index)
 
