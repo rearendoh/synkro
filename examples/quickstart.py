@@ -39,12 +39,9 @@ pipeline = create_pipeline(
     #enable_hitl=False,                  # Disable HITL for non-interactive testing
 )
 
-# Output: Only traces th
-#at passed quality checks
+# Output: Only traces that passed quality checks (when grading enabled)
 dataset = pipeline.generate(EXPENSE_POLICY, traces=20)
 
-# Filter to only passing traces (removes failed grading)
-passing = dataset.filter(passed=True)
-
 # Save to JSONL file (ready for training)
-passing.save()
+# Note: When skip_grading=True, don't filter by passed since traces have no grades
+dataset.save()

@@ -212,13 +212,14 @@ class Dataset(BaseModel):
         """Get unique categories in the dataset."""
         return list(set(t.scenario.category for t in self.traces if t.scenario.category))
 
-    def save(self, path: str | Path | None = None, format: str = "messages") -> "Dataset":
+    def save(self, path: str | Path | None = None, format: str = "messages", pretty_print: bool = False) -> "Dataset":
         """
         Save dataset to a JSONL file.
 
         Args:
             path: Output file path (auto-generated if not provided)
             format: Output format - "messages", "qa", "langsmith", "langfuse", "tool_call", or "chatml"
+            pretty_print: If True, format JSON with indentation (multi-line)
 
         Returns:
             Self for method chaining
@@ -231,6 +232,7 @@ class Dataset(BaseModel):
             >>> dataset.save("eval.jsonl", format="langfuse")  # Langfuse format
             >>> dataset.save("tools.jsonl", format="tool_call")
             >>> dataset.save("chatml.jsonl", format="chatml")
+            >>> dataset.save("readable.jsonl", pretty_print=True)  # Human-readable
         """
         from synkro.formatters import (
             MessagesFormatter, ToolCallFormatter, ChatMLFormatter,
@@ -245,17 +247,17 @@ class Dataset(BaseModel):
         path = Path(path)
 
         if format == "messages":
-            MessagesFormatter().save(self.traces, path)
+            MessagesFormatter().save(self.traces, path, pretty_print=pretty_print)
         elif format == "qa":
-            QAFormatter().save(self.traces, path)
+            QAFormatter().save(self.traces, path, pretty_print=pretty_print)
         elif format == "langsmith":
-            LangSmithFormatter().save(self.traces, path)
+            LangSmithFormatter().save(self.traces, path, pretty_print=pretty_print)
         elif format == "langfuse":
-            LangfuseFormatter().save(self.traces, path)
+            LangfuseFormatter().save(self.traces, path, pretty_print=pretty_print)
         elif format == "tool_call":
-            ToolCallFormatter().save(self.traces, path)
+            ToolCallFormatter().save(self.traces, path, pretty_print=pretty_print)
         elif format == "chatml":
-            ChatMLFormatter().save(self.traces, path)
+            ChatMLFormatter().save(self.traces, path, pretty_print=pretty_print)
         else:
             raise ValueError(f"Unknown format: {format}. Use 'messages', 'qa', 'langsmith', 'langfuse', 'tool_call', or 'chatml'")
         
@@ -266,12 +268,13 @@ class Dataset(BaseModel):
         
         return self
 
-    def to_jsonl(self, format: str = "messages") -> str:
+    def to_jsonl(self, format: str = "messages", pretty_print: bool = False) -> str:
         """
         Convert dataset to JSONL string.
 
         Args:
             format: Output format - "messages", "qa", "langsmith", "langfuse", "tool_call", or "chatml"
+            pretty_print: If True, format JSON with indentation (multi-line)
 
         Returns:
             JSONL formatted string
@@ -282,17 +285,17 @@ class Dataset(BaseModel):
         )
 
         if format == "messages":
-            return MessagesFormatter().to_jsonl(self.traces)
+            return MessagesFormatter().to_jsonl(self.traces, pretty_print=pretty_print)
         elif format == "qa":
-            return QAFormatter().to_jsonl(self.traces)
+            return QAFormatter().to_jsonl(self.traces, pretty_print=pretty_print)
         elif format == "langsmith":
-            return LangSmithFormatter().to_jsonl(self.traces)
+            return LangSmithFormatter().to_jsonl(self.traces, pretty_print=pretty_print)
         elif format == "langfuse":
-            return LangfuseFormatter().to_jsonl(self.traces)
+            return LangfuseFormatter().to_jsonl(self.traces, pretty_print=pretty_print)
         elif format == "tool_call":
-            return ToolCallFormatter().to_jsonl(self.traces)
+            return ToolCallFormatter().to_jsonl(self.traces, pretty_print=pretty_print)
         elif format == "chatml":
-            return ChatMLFormatter().to_jsonl(self.traces)
+            return ChatMLFormatter().to_jsonl(self.traces, pretty_print=pretty_print)
         else:
             raise ValueError(f"Unknown format: {format}. Use 'messages', 'qa', 'langsmith', 'langfuse', 'tool_call', or 'chatml'")
 

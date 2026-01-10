@@ -59,30 +59,37 @@ class MessagesFormatter:
 
         return examples
 
-    def save(self, traces: list["Trace"], path: str | Path) -> None:
+    def save(self, traces: list["Trace"], path: str | Path, pretty_print: bool = False) -> None:
         """
         Save formatted traces to a JSONL file.
 
         Args:
             traces: List of traces to save
             path: Output file path (should end in .jsonl)
+            pretty_print: If True, format JSON with indentation
         """
         path = Path(path)
         examples = self.format(traces)
 
         with open(path, "w") as f:
             for example in examples:
-                f.write(json.dumps(example) + "\n")
+                if pretty_print:
+                    f.write(json.dumps(example, indent=2) + "\n\n")
+                else:
+                    f.write(json.dumps(example) + "\n")
 
-    def to_jsonl(self, traces: list["Trace"]) -> str:
+    def to_jsonl(self, traces: list["Trace"], pretty_print: bool = False) -> str:
         """
         Convert traces to JSONL string.
 
         Args:
             traces: List of traces to convert
+            pretty_print: If True, format JSON with indentation
 
         Returns:
             JSONL formatted string
         """
         examples = self.format(traces)
+        if pretty_print:
+            return "\n\n".join(json.dumps(e, indent=2) for e in examples)
         return "\n".join(json.dumps(e) for e in examples)
