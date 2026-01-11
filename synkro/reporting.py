@@ -77,6 +77,8 @@ class ProgressReporter(Protocol):
         grading_calls: int | None = None,
         scenario_calls: int | None = None,
         response_calls: int | None = None,
+        refinement_calls: int | None = None,
+        hitl_calls: int | None = None,
     ) -> None:
         """Called when generation is complete."""
         ...
@@ -153,6 +155,8 @@ class SilentReporter:
         grading_calls: int | None = None,
         scenario_calls: int | None = None,
         response_calls: int | None = None,
+        refinement_calls: int | None = None,
+        hitl_calls: int | None = None,
     ) -> None:
         pass
 
@@ -245,6 +249,8 @@ class RichReporter:
         grading_calls: int | None = None,
         scenario_calls: int | None = None,
         response_calls: int | None = None,
+        refinement_calls: int | None = None,
+        hitl_calls: int | None = None,
     ) -> None:
         from rich.panel import Panel
         from rich.table import Table
@@ -261,7 +267,12 @@ class RichReporter:
         if total_cost is not None and total_cost > 0:
             summary.add_row("💰 Cost:", f"${total_cost:.4f}")
         if scenario_calls is not None and response_calls is not None:
-            calls_str = f"{scenario_calls} scenario + {response_calls} response"
+            calls_str = f"{scenario_calls} scenario"
+            if hitl_calls is not None and hitl_calls > 0:
+                calls_str += f" + {hitl_calls} hitl"
+            calls_str += f" + {response_calls} response"
+            if refinement_calls is not None and refinement_calls > 0:
+                calls_str += f" + {refinement_calls} refinement"
             if grading_calls is not None and grading_calls > 0:
                 calls_str += f" + {grading_calls} grading"
             summary.add_row("🔄 LLM Calls:", calls_str)
@@ -439,6 +450,8 @@ class CallbackReporter:
         grading_calls: int | None = None,
         scenario_calls: int | None = None,
         response_calls: int | None = None,
+        refinement_calls: int | None = None,
+        hitl_calls: int | None = None,
     ) -> None:
         self._emit("complete", {
             "dataset_size": dataset_size,
@@ -449,6 +462,8 @@ class CallbackReporter:
             "grading_calls": grading_calls,
             "scenario_calls": scenario_calls,
             "response_calls": response_calls,
+            "refinement_calls": refinement_calls,
+            "hitl_calls": hitl_calls,
         })
         if self._on_complete_cb:
             self._on_complete_cb(dataset_size, elapsed_seconds, pass_rate)

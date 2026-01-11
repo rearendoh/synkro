@@ -307,3 +307,7 @@ class LLM:
         """Reset cost and call tracking."""
         self._total_cost = 0.0
         self._call_count = 0
+
+    def reset_call_count(self) -> None:
+        """Reset only the call count, preserving cost tracking."""
+        self._call_count = 0

@@ -351,7 +351,7 @@ class GenerationPipeline:
 
         # Reset grading LLM call counter after setup phases
         # (planner and logic extractor use grading_llm but aren't "grading" calls)
-        self.factory.grading_llm.reset_tracking()
+        self.factory.grading_llm.reset_call_count()
 
         # =====================================================================
         # STAGE 2: Scenario Synthesis (The Adversary)
@@ -378,10 +378,18 @@ class GenerationPipeline:
         # =====================================================================
         # HUMAN-IN-THE-LOOP: Unified Session (Turns + Rules + Scenarios)
         # =====================================================================
+        # Track HITL calls separately (HITLIntentClassifier uses generation_llm,
+        # LogicMapEditor and ScenarioEditor use grading_llm)
+        hitl_calls = 0
         if self.enable_hitl and self.hitl_editor:
+            hitl_calls_start = self.factory.generation_llm.call_count
             logic_map, golden_scenarios, distribution, target_turns = await self._run_hitl_session(
                 logic_map, golden_scenarios, distribution, policy, plan, target_turns
             )
+            hitl_calls = self.factory.generation_llm.call_count - hitl_calls_start
+            # Reset grading_llm after HITL so only verification calls count as "grading"
+            # (LogicMapEditor and ScenarioEditor use grading_llm but aren't grading)
+            self.factory.grading_llm.reset_call_count()
 
         # =====================================================================
         # STAGE 3: Trace Synthesis (The Thinker)
@@ -440,6 +448,8 @@ class GenerationPipeline:
         # STAGE 4: Verification (The Auditor)
         # =====================================================================
         pass_rate: float | None = None
+        # Track refinement calls (GoldenRefiner uses generation_llm during verification)
+        refinement_calls_start = self.factory.generation_llm.call_count
 
         if resuming and cm and cm.stage == "complete":
             final_traces = cm.get_verified_traces()
@@ -467,6 +477,9 @@ class GenerationPipeline:
 
             self.reporter.on_grading_complete(final_traces, pass_rate)
 
+        # Calculate refinement calls (generation_llm calls during verification phase)
+        refinement_calls = self.factory.generation_llm.call_count - refinement_calls_start
+
         # Report completion with cost tracking
         elapsed = (datetime.now() - start_time).total_seconds()
         total_cost = (
@@ -482,6 +495,8 @@ class GenerationPipeline:
             grading_calls=self.factory.grading_llm.call_count,
             scenario_calls=scenario_calls,
             response_calls=response_calls,
+            refinement_calls=refinement_calls,
+            hitl_calls=hitl_calls,
         )
 
         dataset = Dataset(traces=final_traces)
@@ -554,14 +569,23 @@ class GenerationPipeline:
         # =====================================================================
         # HUMAN-IN-THE-LOOP (optional)
         # =====================================================================
+        # Track HITL calls separately
+        hitl_calls = 0
+        scenario_calls = self.factory.generation_llm.call_count
         if self.enable_hitl and self.hitl_editor:
+            hitl_calls_start = self.factory.generation_llm.call_count
             logic_map, golden_scenarios, distribution, _ = await self._run_hitl_session(
                 logic_map, golden_scenarios, distribution, policy, plan, 1
             )
+            hitl_calls = self.factory.generation_llm.call_count - hitl_calls_start
 
         # Report completion
         elapsed = (datetime.now() - start_time).total_seconds()
-        total_cost = self.factory.generation_llm.total_cost
+        # Include both LLM costs (grading_llm is used by planner, logic extractor, HITL editors)
+        total_cost = (
+            self.factory.generation_llm.total_cost +
+            self.factory.grading_llm.total_cost
+        )
 
         self.reporter.on_complete(
             len(golden_scenarios),
@@ -569,9 +593,11 @@ class GenerationPipeline:
             pass_rate=None,
             total_cost=total_cost,
             generation_calls=self.factory.generation_llm.call_count,
-            grading_calls=0,
-            scenario_calls=self.factory.generation_llm.call_count,
+            grading_calls=0,  # No verification phase in scenarios_only
+            scenario_calls=scenario_calls,
             response_calls=0,
+            refinement_calls=0,
+            hitl_calls=hitl_calls,
         )
 
         return ScenariosResult(
