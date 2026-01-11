@@ -475,5 +475,217 @@ class CallbackReporter:
         self._emit("golden_scenarios_complete", {"count": len(scenarios), "distribution": distribution})
 
 
-__all__ = ["ProgressReporter", "SilentReporter", "RichReporter", "CallbackReporter"]
+class FileLoggingReporter:
+    """
+    Reporter that logs events to a file while delegating to another reporter for display.
+
+    This allows you to have both CLI output (via RichReporter) and file logging simultaneously.
+    All events are written to a timestamped log file in a structured format.
+
+    Examples:
+        >>> # Log to file while showing rich CLI output
+        >>> reporter = FileLoggingReporter()  # Uses RichReporter by default
+        >>> pipeline = create_pipeline(reporter=reporter)
+
+        >>> # Custom log directory
+        >>> reporter = FileLoggingReporter(log_dir="./logs")
+
+        >>> # Wrap a different reporter
+        >>> reporter = FileLoggingReporter(delegate=SilentReporter(), log_dir="./logs")
+
+        >>> # Disable console output entirely (file only)
+        >>> reporter = FileLoggingReporter(delegate=SilentReporter())
+    """
+
+    def __init__(
+        self,
+        delegate: "ProgressReporter | None" = None,
+        log_dir: str = ".",
+        log_filename: str | None = None,
+    ):
+        """
+        Initialize the file logging reporter.
+
+        Args:
+            delegate: Reporter to forward events to for display (default: RichReporter)
+            log_dir: Directory to write log files (default: current directory)
+            log_filename: Custom log filename. If None, uses timestamped name like
+                         'synkro_log_2024-01-15_1430.log'
+        """
+        import os
+        from datetime import datetime
+
+        self._delegate = delegate if delegate is not None else RichReporter()
+        self._log_dir = log_dir
+
+        # Create log directory if it doesn't exist
+        os.makedirs(log_dir, exist_ok=True)
+
+        # Generate timestamped filename if not provided
+        if log_filename is None:
+            timestamp = datetime.now().strftime("%Y-%m-%d_%H%M")
+            log_filename = f"synkro_log_{timestamp}.log"
+
+        self._log_path = os.path.join(log_dir, log_filename)
+        self._start_time: float | None = None
+
+        # Write header to log file
+        self._write_log(f"=== Synkro Generation Log ===")
+        self._write_log(f"Started: {datetime.now().isoformat()}")
+        self._write_log(f"Log file: {self._log_path}")
+        self._write_log("=" * 50)
+
+    def _write_log(self, message: str) -> None:
+        """Write a message to the log file."""
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        with open(self._log_path, "a", encoding="utf-8") as f:
+            f.write(f"[{timestamp}] {message}\n")
+
+    def _format_duration(self, seconds: float) -> str:
+        """Format seconds into human-readable duration."""
+        if seconds >= 60:
+            return f"{int(seconds) // 60}m {int(seconds) % 60}s"
+        return f"{seconds:.1f}s"
+
+    @property
+    def log_path(self) -> str:
+        """Return the path to the log file."""
+        return self._log_path
+
+    def spinner(self, message: str = "Thinking..."):
+        """Forward spinner to delegate."""
+        return self._delegate.spinner(message)
+
+    def on_start(self, traces: int, model: str, dataset_type: str) -> None:
+        import time
+        self._start_time = time.time()
+        self._write_log(f"STARTED: Generating {traces} traces")
+        self._write_log(f"  Model: {model}")
+        self._write_log(f"  Dataset type: {dataset_type}")
+        self._delegate.on_start(traces, model, dataset_type)
+
+    def on_plan_complete(self, plan: Plan) -> None:
+        self._write_log(f"PLAN COMPLETE: {len(plan.categories)} categories")
+        for cat in plan.categories:
+            self._write_log(f"  - {cat.name}: {cat.description} (count: {cat.count})")
+        self._delegate.on_plan_complete(plan)
+
+    def on_scenario_progress(self, completed: int, total: int) -> None:
+        if completed == total or completed % 10 == 0:  # Log every 10 or on completion
+            self._write_log(f"SCENARIO PROGRESS: {completed}/{total}")
+        self._delegate.on_scenario_progress(completed, total)
+
+    def on_response_progress(self, completed: int, total: int) -> None:
+        if completed == total or completed % 10 == 0:  # Log every 10 or on completion
+            self._write_log(f"RESPONSE PROGRESS: {completed}/{total}")
+        self._delegate.on_response_progress(completed, total)
+
+    def on_responses_complete(self, traces: list[Trace]) -> None:
+        self._write_log(f"RESPONSES COMPLETE: {len(traces)} traces generated")
+
+        # Group by category
+        by_category: dict[str, list[Trace]] = {}
+        for trace in traces:
+            cat = trace.scenario.category or "uncategorized"
+            by_category.setdefault(cat, []).append(trace)
+
+        for cat_name, cat_traces in by_category.items():
+            self._write_log(f"  Category '{cat_name}': {len(cat_traces)} traces")
+            for trace in cat_traces:
+                scenario_type = getattr(trace.scenario, 'scenario_type', 'unknown')
+                if hasattr(scenario_type, 'value'):
+                    scenario_type = scenario_type.value
+                user_preview = trace.user_message[:80].replace('\n', ' ')
+                self._write_log(f"    [{scenario_type}] {user_preview}")
+
+        self._delegate.on_responses_complete(traces)
+
+    def on_grading_progress(self, completed: int, total: int) -> None:
+        if completed == total or completed % 10 == 0:
+            self._write_log(f"GRADING PROGRESS: {completed}/{total}")
+        self._delegate.on_grading_progress(completed, total)
+
+    def on_grading_complete(self, traces: list[Trace], pass_rate: float) -> None:
+        self._write_log(f"GRADING COMPLETE: {pass_rate:.1f}% passed")
+        passed = sum(1 for t in traces if t.grade and t.grade.passed)
+        failed = len(traces) - passed
+        self._write_log(f"  Passed: {passed}, Failed: {failed}")
+
+        for idx, trace in enumerate(traces, 1):
+            status = "PASS" if (trace.grade and trace.grade.passed) else "FAIL"
+            scenario_preview = trace.scenario.description[:60].replace('\n', ' ')
+            self._write_log(f"  #{idx} [{status}] {scenario_preview}")
+            if trace.grade and not trace.grade.passed and trace.grade.issues:
+                for issue in trace.grade.issues[:3]:
+                    self._write_log(f"       Issue: {issue}")
+
+        self._delegate.on_grading_complete(traces, pass_rate)
+
+    def on_refinement_start(self, iteration: int, failed_count: int) -> None:
+        self._write_log(f"REFINEMENT: Starting iteration {iteration} for {failed_count} failed traces")
+        self._delegate.on_refinement_start(iteration, failed_count)
+
+    def on_grading_skipped(self) -> None:
+        self._write_log("GRADING: Skipped")
+        self._delegate.on_grading_skipped()
+
+    def on_complete(
+        self,
+        dataset_size: int,
+        elapsed_seconds: float,
+        pass_rate: float | None,
+        total_cost: float | None = None,
+        generation_calls: int | None = None,
+        grading_calls: int | None = None,
+        scenario_calls: int | None = None,
+        response_calls: int | None = None,
+    ) -> None:
+        self._write_log("=" * 50)
+        self._write_log(f"COMPLETE: Generated {dataset_size} traces in {self._format_duration(elapsed_seconds)}")
+        if pass_rate is not None:
+            self._write_log(f"  Quality: {pass_rate:.1f}% passed")
+        if total_cost is not None and total_cost > 0:
+            self._write_log(f"  Cost: ${total_cost:.4f}")
+        if scenario_calls is not None:
+            self._write_log(f"  Scenario calls: {scenario_calls}")
+        if response_calls is not None:
+            self._write_log(f"  Response calls: {response_calls}")
+        if grading_calls is not None:
+            self._write_log(f"  Grading calls: {grading_calls}")
+        self._write_log(f"Log saved to: {self._log_path}")
+        self._write_log("=" * 50)
+
+        self._delegate.on_complete(
+            dataset_size, elapsed_seconds, pass_rate, total_cost,
+            generation_calls, grading_calls, scenario_calls, response_calls
+        )
+
+        # Print log file location to console
+        if hasattr(self._delegate, 'console'):
+            self._delegate.console.print(f"[dim]📝 Log saved: {self._log_path}[/dim]")
+
+    def on_logic_map_complete(self, logic_map) -> None:
+        self._write_log(f"LOGIC MAP: Extracted {len(logic_map.rules)} rules")
+        for rule in logic_map.rules:
+            rule_type = getattr(rule, 'category', 'unknown')
+            if hasattr(rule_type, 'value'):
+                rule_type = rule_type.value
+            rule_text = getattr(rule, 'text', str(rule))[:60]
+            self._write_log(f"  [{rule.rule_id}] ({rule_type}) {rule_text}")
+        self._delegate.on_logic_map_complete(logic_map)
+
+    def on_golden_scenarios_complete(self, scenarios, distribution) -> None:
+        self._write_log(f"SCENARIOS: Generated {len(scenarios)} golden scenarios")
+        self._write_log(f"  Distribution: {distribution}")
+        for scenario in scenarios:
+            scenario_type = getattr(scenario, 'scenario_type', 'unknown')
+            if hasattr(scenario_type, 'value'):
+                scenario_type = scenario_type.value
+            preview = scenario.user_message[:60].replace('\n', ' ') if hasattr(scenario, 'user_message') else str(scenario)[:60]
+            self._write_log(f"  [{scenario_type}] {preview}")
+        self._delegate.on_golden_scenarios_complete(scenarios, distribution)
+
+
+__all__ = ["ProgressReporter", "SilentReporter", "RichReporter", "CallbackReporter", "FileLoggingReporter"]
 

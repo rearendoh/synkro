@@ -24,6 +24,11 @@ from synkro.pipelines import create_pipeline
 from synkro.models.google import Google
 from synkro.types import DatasetType
 from synkro.examples import EXPENSE_POLICY
+from synkro.reporting import FileLoggingReporter
+
+# Use FileLoggingReporter for both CLI output and file logging
+# Logs are saved to a timestamped file in the current directory
+reporter = FileLoggingReporter(log_dir="./logs")
 
 # Create a pipeline: generates scenarios, responses, and grades them
 # - model: Used for scenario and response generation (fast model recommended)
@@ -37,6 +42,7 @@ pipeline = create_pipeline(
     #max_iterations=3,                   # Max refinement iterations per trace
     skip_grading=True,                  # Skip grading phase for faster generation
     #enable_hitl=False,                  # Disable HITL for non-interactive testing
+    reporter=reporter,                  # Log to both CLI and file
 )
 
 # Output: Only traces that passed quality checks (when grading enabled)

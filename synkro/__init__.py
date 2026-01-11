@@ -61,7 +61,7 @@ from synkro.llm import LLM
 from synkro.types import DatasetType
 from synkro.core.policy import Policy
 from synkro.core.dataset import Dataset
-from synkro.reporting import SilentReporter, RichReporter, CallbackReporter
+from synkro.reporting import SilentReporter, RichReporter, CallbackReporter, FileLoggingReporter
 
 # Tool types (needed for TOOL_CALL dataset type)
 from synkro.types import ToolDefinition
@@ -91,6 +91,7 @@ __all__ = [
     "SilentReporter",
     "RichReporter",
     "CallbackReporter",
+    "FileLoggingReporter",
     "ProgressReporter",
     # Models
     "OpenAI",
