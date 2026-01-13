@@ -380,6 +380,47 @@ class GenerationPipeline:
         self.reporter.on_golden_scenarios_complete(golden_scenarios, distribution)
 
         # =====================================================================
+        # COVERAGE TRACKING: Extract taxonomy and calculate coverage
+        # =====================================================================
+        coverage_report = None
+        try:
+            taxonomy_extractor = self.factory.create_taxonomy_extractor()
+            scenario_tagger = self.factory.create_scenario_tagger()
+            coverage_calculator = self.factory.create_coverage_calculator()
+
+            # Extract sub-category taxonomy from policy
+            with self.reporter.spinner("Extracting coverage taxonomy..."):
+                taxonomy = await taxonomy_extractor.extract(
+                    policy.text,
+                    logic_map,
+                    [cat.name for cat in plan.categories],
+                )
+
+            if taxonomy and taxonomy.sub_categories:
+                self.reporter.on_taxonomy_extracted(taxonomy)
+
+                # Tag scenarios with sub-category IDs
+                with self.reporter.spinner("Tagging scenarios..."):
+                    golden_scenarios = await scenario_tagger.tag(
+                        golden_scenarios,
+                        taxonomy,
+                        logic_map,
+                    )
+
+                # Calculate coverage report
+                with self.reporter.spinner("Calculating coverage..."):
+                    coverage_report = await coverage_calculator.calculate(
+                        golden_scenarios,
+                        taxonomy,
+                        generate_suggestions=True,
+                    )
+
+                self.reporter.on_coverage_calculated(coverage_report)
+        except Exception:
+            # Coverage tracking is optional - don't fail the whole pipeline
+            pass
+
+        # =====================================================================
         # HUMAN-IN-THE-LOOP: Unified Session (Turns + Rules + Scenarios)
         # =====================================================================
         # Track HITL calls separately (HITLIntentClassifier uses generation_llm,
@@ -511,6 +552,7 @@ class GenerationPipeline:
                 logic_map=logic_map,
                 scenarios=golden_scenarios,
                 distribution=distribution,
+                coverage_report=coverage_report,
             )
 
         return dataset

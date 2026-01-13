@@ -49,8 +49,8 @@ def main():
     result = synkro.generate(
         POLICY,
         traces=5,
-        generation_model=Google.GEMINI_20_FLASH,
-        grading_model=Google.GEMINI_20_FLASH,
+        generation_model=Google.GEMINI_25_FLASH,
+        grading_model=Google.GEMINI_25_FLASH,
         return_logic_map=True,
     )
 
