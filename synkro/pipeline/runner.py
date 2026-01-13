@@ -720,9 +720,7 @@ class GenerationPipeline:
             coverage_report=coverage_report,
         )
 
-        # Show coverage once at start of HITL session (after session state)
-        if coverage_report:
-            self.reporter.on_coverage_calculated(coverage_report)
+        # Coverage is now displayed in display_full_session_state via coverage table
 
         while True:
             feedback = prompt.get_feedback().strip()

@@ -220,9 +220,8 @@ class RichReporter:
         return Status(f"[cyan]{message}[/cyan]", spinner="dots", console=self.console)
     
     def on_start(self, traces: int, model: str, dataset_type: str) -> None:
-        self.console.print()
         self.console.print(
-            f"[cyan]⚡ Generating {traces} traces[/cyan] "
+            f"\n[cyan]⚡ Generating {traces} traces[/cyan] "
             f"[dim]| {dataset_type.upper()} | {model}[/dim]"
         )
     
@@ -351,22 +350,12 @@ class RichReporter:
         """Taxonomy info now shown in scenarios table, so this is a no-op."""
         pass
 
-    def on_coverage_calculated(self, report) -> None:
-        """Display coverage report summary."""
+    def on_coverage_calculated(self, report, show_suggestions: bool = True) -> None:
+        """Display coverage report as a table with totals at bottom."""
         from rich.table import Table
-        from rich.panel import Panel
-
-        # Summary
-        status_colors = {
-            "covered": "green",
-            "partial": "yellow",
-            "uncovered": "red",
-        }
-
-        self.console.print(f"\n[green]📊 Coverage[/green] [dim]{report.overall_coverage_percent:.0f}% overall[/dim]")
 
         # Coverage table
-        table = Table(show_header=True, header_style="bold cyan")
+        table = Table(show_header=True, header_style="bold cyan", title="📊 Coverage")
         table.add_column("Sub-Category")
         table.add_column("Coverage", justify="right")
         table.add_column("Status")
@@ -378,7 +367,6 @@ class RichReporter:
                 "uncovered": "[red]✗[/red]",
             }.get(cov.coverage_status, "?")
 
-            status_color = status_colors.get(cov.coverage_status, "white")
             table.add_row(
                 cov.sub_category_name,
                 f"{cov.coverage_percent:.0f}% ({cov.scenario_count})",
@@ -392,17 +380,18 @@ class RichReporter:
                 "",
             )
 
+        # Add totals row at bottom
+        table.add_row("", "", "", end_section=True)
+        table.add_row(
+            f"[bold]Total ({report.covered_count}✓ {report.partial_count}~ {report.uncovered_count}✗)[/bold]",
+            f"[bold]{report.overall_coverage_percent:.0f}%[/bold]",
+            "",
+        )
+
         self.console.print(table)
 
-        # Show gaps and suggestions
-        if report.gaps:
-            self.console.print(f"\n[yellow]Gaps:[/yellow]")
-            for gap in report.gaps[:3]:
-                self.console.print(f"  • {gap}")
-            if len(report.gaps) > 3:
-                self.console.print(f"  [dim]... {len(report.gaps) - 3} more[/dim]")
-
-        if report.suggestions:
+        # Show suggestions separately (can be disabled for HITL where it goes in session details)
+        if show_suggestions and report.suggestions:
             self.console.print(f"\n[cyan]Suggestions:[/cyan]")
             for i, sugg in enumerate(report.suggestions[:3], 1):
                 self.console.print(f"  {i}. {sugg}")

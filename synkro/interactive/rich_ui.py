@@ -390,6 +390,46 @@ class LogicMapDisplay:
             )
         )
 
+    def display_coverage_table(self, coverage_report: "CoverageReport") -> None:
+        """Display coverage table with totals at bottom."""
+        from rich.table import Table
+
+        table = Table(show_header=True, header_style="bold cyan", title="📊 Coverage")
+        table.add_column("Sub-Category")
+        table.add_column("Coverage", justify="right")
+        table.add_column("Status")
+
+        for cov in coverage_report.sub_category_coverage[:10]:
+            status_icon = {
+                "covered": "[green]✓[/green]",
+                "partial": "[yellow]~[/yellow]",
+                "uncovered": "[red]✗[/red]",
+            }.get(cov.coverage_status, "?")
+
+            table.add_row(
+                cov.sub_category_name,
+                f"{cov.coverage_percent:.0f}% ({cov.scenario_count})",
+                status_icon,
+            )
+
+        if len(coverage_report.sub_category_coverage) > 10:
+            table.add_row(
+                f"[dim]... {len(coverage_report.sub_category_coverage) - 10} more[/dim]",
+                "",
+                "",
+            )
+
+        # Add totals row at bottom
+        table.add_row("", "", "", end_section=True)
+        table.add_row(
+            f"[bold]Total ({coverage_report.covered_count}✓ {coverage_report.partial_count}~ {coverage_report.uncovered_count}✗)[/bold]",
+            f"[bold]{coverage_report.overall_coverage_percent:.0f}%[/bold]",
+            "",
+        )
+
+        self.console.print()
+        self.console.print(table)
+
     def display_full_session_state(
         self,
         plan: "Plan",
@@ -399,7 +439,7 @@ class LogicMapDisplay:
         distribution: dict[str, int] | None,
         coverage_report: "CoverageReport | None" = None,
     ) -> None:
-        """Display logic map, scenarios with sub-category tags, and session details."""
+        """Display logic map, scenarios, coverage table, and session details with suggestions."""
         from rich.panel import Panel
 
         # Display logic map first
@@ -409,12 +449,25 @@ class LogicMapDisplay:
         if scenarios:
             self.display_scenarios(scenarios, coverage_report=coverage_report)
 
-        # Session Details panel at bottom (instructions + settings)
+        # Display coverage table (above session details)
+        if coverage_report:
+            self.display_coverage_table(coverage_report)
+
+        # Build suggestions section for session details
+        suggestions_text = ""
+        if coverage_report and coverage_report.suggestions:
+            suggestions_text = "\n\n[bold]Suggestions:[/bold]"
+            for i, sugg in enumerate(coverage_report.suggestions[:2], 1):
+                # Truncate long suggestions
+                sugg_short = sugg[:80] + "..." if len(sugg) > 80 else sugg
+                suggestions_text += f"\n  {i}. [dim]{sugg_short}[/dim]"
+
+        # Session Details panel at bottom (instructions + settings + suggestions)
         session_details = f"""[bold]Commands:[/bold] [cyan]done[/cyan] | [cyan]undo[/cyan] | [cyan]reset[/cyan] | [cyan]show R001[/cyan] | [cyan]show S3[/cyan] | [cyan]help[/cyan]
 
-[bold]Feedback:[/bold] [yellow]"shorter"[/yellow] [yellow]"5 turns"[/yellow] [yellow]"remove R005"[/yellow] [yellow]"add scenario for..."[/yellow] [yellow]"delete S3"[/yellow]
+[bold]Feedback:[/bold] [yellow]"shorter"[/yellow] [yellow]"5 turns"[/yellow] [yellow]"remove R005"[/yellow] [yellow]"add scenario for..."[/yellow] [yellow]"delete S3"[/yellow] [yellow]"improve coverage"[/yellow]
 
-[dim]Complexity:[/dim] [cyan]{plan.complexity_level.title()}[/cyan]    [dim]Turns:[/dim] [green]{current_turns}[/green]"""
+[dim]Complexity:[/dim] [cyan]{plan.complexity_level.title()}[/cyan]    [dim]Turns:[/dim] [green]{current_turns}[/green]{suggestions_text}"""
 
         self.console.print()
         self.console.print(
