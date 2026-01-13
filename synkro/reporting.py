@@ -753,6 +753,8 @@ class FileLoggingReporter:
         grading_calls: int | None = None,
         scenario_calls: int | None = None,
         response_calls: int | None = None,
+        refinement_calls: int | None = None,
+        hitl_calls: int | None = None,
     ) -> None:
         self._write_log("=" * 50)
         self._write_log(f"COMPLETE: Generated {dataset_size} traces in {self._format_duration(elapsed_seconds)}")
@@ -766,12 +768,17 @@ class FileLoggingReporter:
             self._write_log(f"  Response calls: {response_calls}")
         if grading_calls is not None:
             self._write_log(f"  Grading calls: {grading_calls}")
+        if refinement_calls is not None:
+            self._write_log(f"  Refinement calls: {refinement_calls}")
+        if hitl_calls is not None:
+            self._write_log(f"  HITL calls: {hitl_calls}")
         self._write_log(f"Log saved to: {self._log_path}")
         self._write_log("=" * 50)
 
         self._delegate.on_complete(
             dataset_size, elapsed_seconds, pass_rate, total_cost,
-            generation_calls, grading_calls, scenario_calls, response_calls
+            generation_calls, grading_calls, scenario_calls, response_calls,
+            refinement_calls, hitl_calls
         )
 
         # Print log file location to console
