@@ -355,8 +355,8 @@ class RichReporter:
                 self.console.print(f"    [dim]... and {len(cat_traces) - 3} more[/dim]")
 
     def on_taxonomy_extracted(self, taxonomy) -> None:
-        """Display extracted sub-category taxonomy."""
-        self.console.print(f"\n[green]🏷️  Taxonomy[/green] [dim]{len(taxonomy.sub_categories)} sub-categories[/dim]")
+        """Taxonomy info now shown in scenarios table, so this is a no-op."""
+        pass
 
     def on_coverage_calculated(self, report) -> None:
         """Display coverage report summary."""

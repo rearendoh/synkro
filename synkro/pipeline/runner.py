@@ -717,6 +717,7 @@ class GenerationPipeline:
             current_turns,
             session.current_scenarios,
             session.current_distribution,
+            coverage_report=coverage_report,
         )
 
         # Show coverage once at start of HITL session (after session state)

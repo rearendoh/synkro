@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from synkro.types.logic_map import LogicMap, GoldenScenario
     from synkro.types.core import Plan
+    from synkro.types.coverage import CoverageReport
 
 
 class LogicMapDisplay:
@@ -210,10 +211,28 @@ class LogicMapDisplay:
         self,
         scenarios: list["GoldenScenario"],
         distribution: dict[str, int] | None = None,
+        coverage_report: "CoverageReport | None" = None,
     ) -> None:
-        """Display all scenarios with S1, S2... IDs grouped by type."""
+        """Display all scenarios with S1, S2... IDs grouped by type, with sub-category tags."""
         from rich.panel import Panel
         from rich.tree import Tree
+
+        # Build sub-category lookup from coverage report
+        scenario_sub_categories: dict[int, list[str]] = {}
+        if coverage_report:
+            for cov in coverage_report.sub_category_coverage:
+                for scenario_id in cov.scenario_ids:
+                    # scenario_ids are typically "S1", "S2" etc or indices
+                    try:
+                        if isinstance(scenario_id, str) and scenario_id.upper().startswith("S"):
+                            idx = int(scenario_id[1:])
+                        else:
+                            idx = int(scenario_id)
+                        if idx not in scenario_sub_categories:
+                            scenario_sub_categories[idx] = []
+                        scenario_sub_categories[idx].append(cov.sub_category_name)
+                    except (ValueError, TypeError):
+                        pass
 
         # Scenario tree view grouped by type
         tree = Tree("[bold cyan]Scenarios[/bold cyan]")
@@ -232,11 +251,25 @@ class LogicMapDisplay:
                 type_display = type_name.replace("_", " ").title()
                 branch = tree.add(f"[bold]{type_display}[/bold] ({len(by_type[type_name])})")
                 for idx, scenario in by_type[type_name]:
-                    desc = scenario.description[:50] + "..." if len(scenario.description) > 50 else scenario.description
-                    rules = ", ".join(scenario.target_rule_ids[:3]) if scenario.target_rule_ids else "None"
-                    if len(scenario.target_rule_ids) > 3:
-                        rules += "..."
-                    branch.add(f"[cyan]S{idx}[/cyan]: {desc} [dim]→ {rules}[/dim]")
+                    desc = scenario.description[:45] + "..." if len(scenario.description) > 45 else scenario.description
+
+                    # Get sub-categories for this scenario
+                    sub_cats = scenario_sub_categories.get(idx, [])
+                    if not sub_cats and hasattr(scenario, 'sub_category_ids') and scenario.sub_category_ids:
+                        sub_cats = scenario.sub_category_ids[:2]
+
+                    # Format sub-category tags
+                    if sub_cats:
+                        tags = " ".join(f"[magenta][{sc[:15]}][/magenta]" for sc in sub_cats[:2])
+                        if len(sub_cats) > 2:
+                            tags += f" [dim]+{len(sub_cats)-2}[/dim]"
+                        branch.add(f"[cyan]S{idx}[/cyan]: {desc} {tags}")
+                    else:
+                        rules = ", ".join(scenario.target_rule_ids[:2]) if scenario.target_rule_ids else ""
+                        if rules:
+                            branch.add(f"[cyan]S{idx}[/cyan]: {desc} [dim]→ {rules}[/dim]")
+                        else:
+                            branch.add(f"[cyan]S{idx}[/cyan]: {desc}")
 
         self.console.print()
         self.console.print(
@@ -355,16 +388,17 @@ class LogicMapDisplay:
         current_turns: int,
         scenarios: list["GoldenScenario"] | None,
         distribution: dict[str, int] | None,
+        coverage_report: "CoverageReport | None" = None,
     ) -> None:
-        """Display logic map, scenarios, and session details (at bottom)."""
+        """Display logic map, scenarios with sub-category tags, and session details."""
         from rich.panel import Panel
 
         # Display logic map first
         self.display_full(logic_map)
 
-        # Display scenarios if available
+        # Display scenarios with sub-category tags if available
         if scenarios:
-            self.display_scenarios(scenarios)
+            self.display_scenarios(scenarios, coverage_report=coverage_report)
 
         # Session Details panel at bottom (instructions + settings)
         session_details = f"""[bold]Commands:[/bold] [cyan]done[/cyan] | [cyan]undo[/cyan] | [cyan]reset[/cyan] | [cyan]show R001[/cyan] | [cyan]show S3[/cyan] | [cyan]help[/cyan]

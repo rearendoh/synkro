@@ -40,12 +40,7 @@ EXPENSE REIMBURSEMENT POLICY
 
 
 def main():
-    print("=" * 60)
-    print("COVERAGE TRACKING EXAMPLE")
-    print("=" * 60)
-
     # Generate scenarios with logic map access
-    print("\nGenerating scenarios...")
     result = synkro.generate(
         POLICY,
         traces=5,
@@ -55,44 +50,9 @@ def main():
         enable_hitl=True,  # Enable for interactive coverage improvement
     )
 
-    # View coverage report (prints to console)
-    print("\n" + "=" * 60)
-    print("COVERAGE REPORT")
-    print("=" * 60)
-
-    # Access coverage report directly from result
-    if result.coverage_report:
-        # Method 1: Print formatted to console
-        result.coverage_report.print()
-
-        # Method 2: Get as dictionary for programmatic use
-        print("\n" + "=" * 60)
-        print("PROGRAMMATIC ACCESS")
-        print("=" * 60)
-        report = result.coverage_report.to_dict()
-        print(f"Overall coverage: {report['overall_coverage_percent']:.1f}%")
-        print(f"Covered: {report['covered_count']}")
-        print(f"Partial: {report['partial_count']}")
-        print(f"Uncovered: {report['uncovered_count']}")
-        print(f"Gaps: {len(report['gaps'])}")
-
-        if report['gaps']:
-            print("\nGaps to address:")
-            for gap in report['gaps'][:3]:
-                print(f"  - {gap}")
-
-        # Method 3: Get as JSON string
-        # json_str = result.coverage_report.to_json()
-        # print(json_str)
-    else:
-        print("No coverage data available.")
-
     # Get the dataset
     dataset = result.dataset
-    print(f"\nDataset: {len(dataset)} traces")
     dataset.save("coverage_example_output.jsonl")
-    print("Saved to coverage_example_output.jsonl")
-
 
 if __name__ == "__main__":
     main()
