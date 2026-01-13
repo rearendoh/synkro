@@ -11,9 +11,9 @@ from synkro.models.google import Google
 
 
 def main():
-    result = synkro.generate(
+    dataset = synkro.generate(
         TOXICITY_POLICY,
-        traces=50,
+        traces=5,
         generation_model=Google.GEMINI_25_FLASH,
         grading_model=Google.GEMINI_25_FLASH,
     )
@@ -29,7 +29,7 @@ def main():
         },
     )
 
-    formatter.save(result.dataset.traces, "toxicity_bert.jsonl")
+    formatter.save(dataset.traces, "toxicity_bert.jsonl")
 
 
 if __name__ == "__main__":
