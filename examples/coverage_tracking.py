@@ -11,6 +11,7 @@ This helps you:
 """
 
 import synkro
+from synkro.models.anthropic import Anthropic
 
 # Sample policy
 POLICY = """
@@ -47,7 +48,9 @@ def main():
     print("\nGenerating scenarios...")
     result = synkro.generate(
         POLICY,
-        traces=20,
+        traces=5,
+        generation_model=Anthropic.CLAUDE_45_SONNET,
+        grading_model=Anthropic.CLAUDE_45_SONNET,
         return_logic_map=True,
     )
 
