@@ -797,6 +797,19 @@ class FileLoggingReporter:
             self._write_log(f"  [{scenario_type}] {preview}")
         self._delegate.on_golden_scenarios_complete(scenarios, distribution)
 
+    def on_taxonomy_extracted(self, taxonomy) -> None:
+        self._write_log(f"TAXONOMY: Extracted {len(taxonomy.sub_categories)} sub-categories")
+        self._delegate.on_taxonomy_extracted(taxonomy)
+
+    def on_coverage_calculated(self, report) -> None:
+        self._write_log(f"COVERAGE: {report.overall_coverage_percent:.0f}% overall")
+        self._write_log(f"  Covered: {report.covered_count}, Partial: {report.partial_count}, Uncovered: {report.uncovered_count}")
+        self._delegate.on_coverage_calculated(report)
+
+    def on_coverage_improved(self, before, after, added_scenarios) -> None:
+        self._write_log(f"COVERAGE IMPROVED: {before.overall_coverage_percent:.0f}% → {after.overall_coverage_percent:.0f}% (+{added_scenarios} scenarios)")
+        self._delegate.on_coverage_improved(before, after, added_scenarios)
+
 
 __all__ = ["ProgressReporter", "SilentReporter", "RichReporter", "CallbackReporter", "FileLoggingReporter"]
 
