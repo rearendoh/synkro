@@ -1,6 +1,6 @@
 # Synkro
 
-Library for turning unstructured policies, handbooks, and documentation into high-quality conversation, tool calling or evaluation data for LLMs.
+Framework for turning unstructured policies, handbooks, and documentation into high-quality conversation, tool calling or evaluation data for LLMs.
 
 ## Features
 
