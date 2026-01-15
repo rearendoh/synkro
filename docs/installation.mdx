@@ -1,0 +1,89 @@
+---
+title: Installation
+description: "Install Synkro and configure your environment"
+---
+
+## Requirements
+
+- Python 3.10 or higher
+- API key for at least one LLM provider
+
+## Install from PyPI
+
+```bash
+pip install synkro
+```
+
+## API Keys
+
+Synkro supports multiple LLM providers. Set the API key for your preferred provider:
+
+<Tabs>
+  <Tab title="OpenAI">
+    ```bash
+    export OPENAI_API_KEY="sk-..."
+    ```
+  </Tab>
+  <Tab title="Anthropic">
+    ```bash
+    export ANTHROPIC_API_KEY="sk-ant-..."
+    ```
+  </Tab>
+  <Tab title="Google">
+    ```bash
+    export GOOGLE_API_KEY="..."
+    ```
+  </Tab>
+</Tabs>
+
+## Verify Installation
+
+```python
+import synkro
+print(synkro.__version__)
+```
+
+## Choose Your Models
+
+```python
+from synkro import create_pipeline
+from synkro.models import OpenAI, Anthropic, Google
+
+# OpenAI
+pipeline = create_pipeline(
+    model=OpenAI.GPT_4O_MINI,
+    grading_model=OpenAI.GPT_4O,
+)
+
+# Anthropic
+pipeline = create_pipeline(
+    model=Anthropic.CLAUDE_SONNET,
+    grading_model=Anthropic.CLAUDE_OPUS,
+)
+
+# Google
+pipeline = create_pipeline(
+    model=Google.GEMINI_25_FLASH,
+    grading_model=Google.GEMINI_25_PRO,
+)
+```
+
+## Local Models
+
+Run with Ollama or any OpenAI-compatible endpoint:
+
+```python
+from synkro import create_pipeline
+from synkro.models import Local
+
+# Ollama
+pipeline = create_pipeline(model=Local.OLLAMA("llama3.2"))
+
+# vLLM
+pipeline = create_pipeline(model=Local.VLLM("mistral-7b"))
+
+# Custom endpoint
+pipeline = create_pipeline(
+    model=Local.CUSTOM("my-model", endpoint="http://localhost:8080")
+)
+```

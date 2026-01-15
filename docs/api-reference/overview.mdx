@@ -1,0 +1,74 @@
+---
+title: Overview
+description: "Synkro API reference"
+---
+
+## Core Functions
+
+<CardGroup cols={2}>
+  <Card title="generate()" href="/api-reference/generate">
+    Generate training datasets from policy
+  </Card>
+  <Card title="generate_scenarios()" href="/api-reference/generate-scenarios">
+    Generate eval scenarios without responses
+  </Card>
+  <Card title="grade()" href="/api-reference/grade">
+    Grade a response against policy
+  </Card>
+  <Card title="create_pipeline()" href="/api-reference/create-pipeline">
+    Create a customized pipeline
+  </Card>
+</CardGroup>
+
+## Quick Reference
+
+```python
+import synkro
+from synkro import create_pipeline, DatasetType
+from synkro.models import OpenAI, Anthropic, Google, Local
+from synkro.core.policy import Policy
+from synkro.examples import EXPENSE_POLICY
+
+# Simple generation
+dataset = synkro.generate(EXPENSE_POLICY, traces=50)
+
+# With pipeline
+pipeline = create_pipeline(
+    model=Google.GEMINI_25_FLASH,
+    dataset_type=DatasetType.CONVERSATION,
+)
+dataset = pipeline.generate(policy, traces=100)
+
+# Eval scenarios
+result = synkro.generate_scenarios(policy, count=100)
+
+# Grade responses
+grade = synkro.grade(response, scenario, policy)
+```
+
+## Types
+
+| Type | Description |
+|------|-------------|
+| `DatasetType` | CONVERSATION, INSTRUCTION, EVALUATION, TOOL_CALL |
+| `Dataset` | Generated dataset with save/filter methods |
+| `Policy` | Policy document wrapper |
+| `GenerationResult` | Result with dataset + logic_map + coverage |
+| `GradeResult` | Grading result with passed/feedback |
+
+## Reporters
+
+```python
+from synkro import SilentReporter, RichReporter, CallbackReporter
+
+# Silent (no output)
+pipeline = create_pipeline(reporter=SilentReporter())
+
+# Rich (default CLI output)
+pipeline = create_pipeline(reporter=RichReporter())
+
+# Callbacks (programmatic)
+reporter = CallbackReporter(
+    on_progress=lambda event, data: print(f"{event}: {data}")
+)
+```

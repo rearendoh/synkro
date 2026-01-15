@@ -1,0 +1,99 @@
+---
+title: generate_scenarios()
+description: "Generate eval scenarios without synthetic responses"
+---
+
+## Signature
+
+```python
+synkro.generate_scenarios(
+    policy: str | Policy,
+    count: int = 100,
+    generation_model: str = "gpt-4o-mini",
+    temperature: float = 0.8,
+    reporter: ProgressReporter | None = None,
+    enable_hitl: bool = False,
+    base_url: str | None = None,
+) -> ScenariosResult
+```
+
+## Parameters
+
+<ParamField path="policy" type="str | Policy" required>
+  Policy text or Policy object
+</ParamField>
+
+<ParamField path="count" type="int" default="100">
+  Number of scenarios to generate
+</ParamField>
+
+<ParamField path="generation_model" type="str" default="gpt-4o-mini">
+  Model for generation
+</ParamField>
+
+<ParamField path="temperature" type="float" default="0.8">
+  Sampling temperature (higher = more diverse scenarios)
+</ParamField>
+
+<ParamField path="enable_hitl" type="bool" default="False">
+  Enable Human-in-the-Loop editing
+</ParamField>
+
+## Returns
+
+`ScenariosResult` containing:
+- `scenarios` - List of EvalScenario objects
+- `logic_map` - Extracted Logic Map
+- `distribution` - Scenario type distribution
+
+## EvalScenario Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `user_message` | str | The test input |
+| `expected_outcome` | str | Ground truth behavior |
+| `target_rule_ids` | list[str] | Rules being tested |
+| `scenario_type` | str | positive/negative/edge_case/irrelevant |
+| `category` | str | Policy category |
+| `context` | str | Additional context |
+
+## Examples
+
+### Generate and Grade
+
+```python
+import synkro
+
+# Generate scenarios
+result = synkro.generate_scenarios(policy, count=100)
+
+# Grade your model's responses
+for scenario in result.scenarios:
+    response = my_model(scenario.user_message)
+    grade = synkro.grade(response, scenario, policy)
+
+    if not grade.passed:
+        print(f"Failed: {grade.feedback}")
+```
+
+### Inspect Scenarios
+
+```python
+result = synkro.generate_scenarios(policy, count=50)
+
+for scenario in result.scenarios:
+    print(f"Type: {scenario.scenario_type}")
+    print(f"Input: {scenario.user_message}")
+    print(f"Expected: {scenario.expected_outcome}")
+    print(f"Rules: {scenario.target_rule_ids}")
+    print("---")
+```
+
+### Check Distribution
+
+```python
+result = synkro.generate_scenarios(policy, count=100)
+
+print(result.distribution)
+# {'positive': 35, 'negative': 30, 'edge_case': 25, 'irrelevant': 10}
+```

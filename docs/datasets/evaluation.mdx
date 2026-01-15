@@ -1,0 +1,97 @@
+---
+title: Evaluation
+description: "Q&A datasets with ground truth for LLM evaluation"
+---
+
+## Overview
+
+The **EVALUATION** dataset type generates test scenarios with ground truth labels for evaluating your models.
+
+Best for: Benchmarking, regression testing, eval platforms (LangSmith, Langfuse).
+
+## Usage
+
+```python
+from synkro import create_pipeline, DatasetType
+
+pipeline = create_pipeline(dataset_type=DatasetType.EVALUATION)
+dataset = pipeline.generate(policy, traces=100)
+```
+
+## Output Formats
+
+### Generic Q&A
+
+```python
+dataset.save("eval.jsonl", format="qa")
+```
+
+```json
+{
+  "question": "Can I submit a $200 expense without a receipt?",
+  "answer": "No, all expenses require receipts per policy...",
+  "expected_outcome": "Deny - missing receipt violates R003",
+  "ground_truth_rules": ["R003", "R005"],
+  "difficulty": "negative",
+  "category": "Receipt Requirements"
+}
+```
+
+### LangSmith
+
+```python
+dataset.save("eval.jsonl", format="langsmith")
+```
+
+```json
+{
+  "inputs": {"question": "...", "context": "..."},
+  "outputs": {"answer": "..."},
+  "metadata": {"expected_outcome": "...", "ground_truth_rules": [...]}
+}
+```
+
+### Langfuse
+
+```python
+dataset.save("eval.jsonl", format="langfuse")
+```
+
+```json
+{
+  "input": {"question": "...", "context": "..."},
+  "expectedOutput": {"answer": "...", "expected_outcome": "..."},
+  "metadata": {"ground_truth_rules": [...], "difficulty": "..."}
+}
+```
+
+## Eval API
+
+Generate scenarios without synthetic responses, then grade your own model:
+
+```python
+import synkro
+
+# Generate test scenarios
+result = synkro.generate_scenarios(policy, count=100)
+
+# Test YOUR model
+for scenario in result.scenarios:
+    response = my_model(scenario.user_message)
+    grade = synkro.grade(response, scenario, policy)
+
+    if not grade.passed:
+        print(f"Failed: {grade.feedback}")
+```
+
+## Ground Truth Fields
+
+Each scenario includes:
+
+| Field | Description |
+|-------|-------------|
+| `user_message` | The test input |
+| `expected_outcome` | What should happen |
+| `target_rule_ids` | Rules being tested |
+| `scenario_type` | positive/negative/edge_case |
+| `category` | Policy category |

@@ -1,0 +1,84 @@
+---
+title: Quickstart
+description: "Generate your first dataset in 5 minutes"
+---
+
+## Installation
+
+```bash
+pip install synkro
+```
+
+## Set Your API Key
+
+Synkro uses LLMs to generate data. Set your API key:
+
+```bash
+export OPENAI_API_KEY="sk-..."
+# or
+export ANTHROPIC_API_KEY="sk-ant-..."
+# or
+export GOOGLE_API_KEY="..."
+```
+
+## Generate a Dataset
+
+### Using Built-in Examples
+
+```python
+from synkro import create_pipeline
+from synkro.examples import EXPENSE_POLICY
+
+pipeline = create_pipeline()
+dataset = pipeline.generate(EXPENSE_POLICY, traces=50)
+dataset.save("training.jsonl")
+```
+
+### From Your Own Policy
+
+```python
+from synkro import create_pipeline
+
+policy = """
+All expenses over $50 require manager approval.
+Receipts required for expenses over $25.
+Client meals limited to $75 per person.
+"""
+
+pipeline = create_pipeline()
+dataset = pipeline.generate(policy, traces=50)
+dataset.save("training.jsonl")
+```
+
+### From Files
+
+```python
+from synkro import create_pipeline
+from synkro.core.policy import Policy
+
+policy = Policy.from_file("handbook.pdf")  # PDF, DOCX, TXT, MD
+pipeline = create_pipeline()
+dataset = pipeline.generate(policy, traces=100)
+```
+
+## Output
+
+Your dataset is saved in JSONL format:
+
+```json
+{"messages": [
+  {"role": "user", "content": "Can I expense a $200 team dinner?"},
+  {"role": "assistant", "content": "For a $200 team dinner, you'll need manager approval since it exceeds the $50 threshold..."}
+]}
+```
+
+## What's Next?
+
+<CardGroup cols={2}>
+  <Card title="Dataset Types" icon="database" href="/datasets/conversation">
+    Learn about different output formats
+  </Card>
+  <Card title="Coverage Tracking" icon="chart-pie" href="/concepts/coverage">
+    Ensure your dataset covers all policy aspects
+  </Card>
+</CardGroup>

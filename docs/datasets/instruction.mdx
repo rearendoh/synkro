@@ -1,0 +1,55 @@
+---
+title: Instruction
+description: "Single-turn Q&A datasets for instruction-following models"
+---
+
+## Overview
+
+The **INSTRUCTION** dataset type generates single-turn question-answer pairs.
+
+Best for: Instruction-following models, RAG systems, or when you don't need multi-turn context.
+
+## Usage
+
+```python
+from synkro import create_pipeline, DatasetType
+
+pipeline = create_pipeline(dataset_type=DatasetType.INSTRUCTION)
+dataset = pipeline.generate(policy, traces=100)
+dataset.save("training.jsonl")
+```
+
+## Output Format
+
+```json
+{"messages": [
+  {"role": "user", "content": "What's the approval process for a $350 expense?"},
+  {"role": "assistant", "content": "For a $350 expense, you'll need manager approval since it exceeds the $50 threshold. Here's the process:\n\n1. Submit your expense report in the system\n2. Attach the original receipt\n3. Your manager will receive a notification\n4. Approval typically takes 1-2 business days\n\nOnce approved, reimbursement is processed within 14 business days."}
+]}
+```
+
+## When to Use
+
+<CardGroup cols={2}>
+  <Card title="Use Instruction" icon="check">
+    - Standalone Q&A
+    - RAG applications
+    - Quick lookups
+    - FAQ-style training
+  </Card>
+  <Card title="Use Conversation" icon="xmark">
+    - Follow-up questions needed
+    - Context-dependent answers
+    - Complex multi-step processes
+  </Card>
+</CardGroup>
+
+## Export Formats
+
+```python
+# Standard messages format
+dataset.save("data.jsonl", format="messages")
+
+# ChatML format
+dataset.save("data.jsonl", format="chatml")
+```

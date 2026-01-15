@@ -1,0 +1,91 @@
+---
+title: Pipeline
+description: "How Synkro transforms documents into datasets"
+---
+
+## The Synkro Pipeline
+
+Synkro uses a multi-stage pipeline to generate high-quality training data:
+
+```
+Document → Logic Map → Scenarios → Responses → Grade → Refine → Dataset
+```
+
+## Stages
+
+### 1. Document Ingestion
+
+Your policy is parsed into raw text. Supported formats:
+- Plain text
+- PDF files
+- DOCX files
+- Markdown
+- URLs
+
+```python
+from synkro.core.policy import Policy
+
+# Multiple input methods
+policy = Policy(text="Your policy text...")
+policy = Policy.from_file("handbook.pdf")
+policy = Policy.from_url("https://example.com/policy")
+```
+
+### 2. Logic Extraction
+
+The policy is analyzed and structured rules are extracted into a **Logic Map**:
+
+- Each rule has an ID (R001, R002, etc.)
+- Conditions and actions identified
+- Dependencies between rules mapped
+- Categories assigned
+
+### 3. Scenario Generation
+
+Diverse test scenarios are created based on the Logic Map:
+
+| Type | Description | % |
+|------|-------------|---|
+| Positive | User meets all criteria | 35% |
+| Negative | User violates one criterion | 30% |
+| Edge Case | Boundary conditions | 25% |
+| Irrelevant | Outside policy scope | 10% |
+
+### 4. Response Generation
+
+For each scenario, a policy-compliant assistant response is generated that:
+- Correctly applies the relevant rules
+- Cites specific policy sections
+- Handles edge cases appropriately
+
+### 5. Grading
+
+Each response is evaluated for:
+- Policy compliance
+- Accurate citations
+- Sound reasoning
+- Appropriate tone
+
+### 6. Refinement
+
+Failed responses are automatically refined (up to N iterations) until they pass quality checks.
+
+### 7. Dataset Export
+
+Passing traces are exported in your chosen format.
+
+## Pipeline Configuration
+
+```python
+from synkro import create_pipeline, DatasetType
+from synkro.models import Google
+
+pipeline = create_pipeline(
+    model=Google.GEMINI_25_FLASH,       # Fast generation
+    grading_model=Google.GEMINI_25_PRO, # Quality grading
+    dataset_type=DatasetType.CONVERSATION,
+    max_iterations=3,                    # Refinement attempts
+)
+
+dataset = pipeline.generate(policy, traces=100)
+```

@@ -1,0 +1,70 @@
+---
+title: Introduction
+description: "Framework for turning unstructured policies into training data for LLMs"
+---
+
+# What is Synkro?
+
+Synkro transforms your policies, handbooks, and documentation into high-quality training datasets for LLMs. Instead of manually crafting training examples, you provide your source documents and Synkro generates diverse, policy-compliant conversations.
+
+## How It Works
+
+<Steps>
+  <Step title="Document">
+    Upload your policy (PDF, DOCX, TXT, URL, or raw text)
+  </Step>
+  <Step title="Logic Map">
+    Synkro extracts structured rules with conditions, actions, and dependencies
+  </Step>
+  <Step title="Scenarios">
+    Diverse test cases generated: positive, negative, edge cases
+  </Step>
+  <Step title="Responses">
+    Policy-compliant assistant responses created for each scenario
+  </Step>
+  <Step title="Grade & Refine">
+    Responses evaluated and auto-refined until passing quality checks
+  </Step>
+  <Step title="Dataset">
+    Export training-ready data in your preferred format
+  </Step>
+</Steps>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Quality Evaluation" icon="check">
+    Every response is graded and automatically refined if it fails
+  </Card>
+  <Card title="Multiple Formats" icon="file">
+    Conversation, Instruction, Evaluation, and Tool Calling datasets
+  </Card>
+  <Card title="Coverage Tracking" icon="chart-pie">
+    Track scenario diversity like code coverage, identify gaps
+  </Card>
+  <Card title="Interactive Editing" icon="pencil">
+    Review and edit extracted rules before generation
+  </Card>
+</CardGroup>
+
+## Quick Example
+
+```python
+from synkro import create_pipeline
+from synkro.examples import EXPENSE_POLICY
+
+pipeline = create_pipeline()
+dataset = pipeline.generate(EXPENSE_POLICY, traces=50)
+dataset.save("training.jsonl")
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Generate your first dataset in 5 minutes
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/overview">
+    Explore the full API
+  </Card>
+</CardGroup>

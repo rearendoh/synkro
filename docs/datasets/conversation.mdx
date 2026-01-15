@@ -1,0 +1,74 @@
+---
+title: Conversation
+description: "Multi-turn dialogue datasets for chat models"
+---
+
+## Overview
+
+The **CONVERSATION** dataset type generates multi-turn dialogues where the user and assistant have back-and-forth exchanges.
+
+Best for: Fine-tuning chat models that need to handle follow-up questions and context.
+
+## Usage
+
+```python
+from synkro import create_pipeline, DatasetType
+
+pipeline = create_pipeline(dataset_type=DatasetType.CONVERSATION)
+dataset = pipeline.generate(policy, traces=50)
+dataset.save("training.jsonl")
+```
+
+## Output Format
+
+```json
+{"messages": [
+  {"role": "user", "content": "What's the approval process for a $350 expense?"},
+  {"role": "assistant", "content": "For a $350 expense, you'll need manager approval since it exceeds the $50 threshold. Please submit your expense report with the receipt attached."},
+  {"role": "user", "content": "What if my manager is on vacation?"},
+  {"role": "assistant", "content": "If your manager is unavailable, you can request approval from their designated backup or escalate to your skip-level manager. The approval requirement still applies regardless of availability."}
+]}
+```
+
+## Conversation Turns
+
+Control the number of turns per conversation:
+
+```python
+# Fixed turns
+dataset = pipeline.generate(policy, traces=50, turns=3)
+
+# Auto (based on policy complexity)
+dataset = pipeline.generate(policy, traces=50, turns="auto")
+```
+
+| Complexity | Auto Turns |
+|------------|------------|
+| Simple | 1-2 |
+| Conditional | 3 |
+| Complex | 5+ |
+
+## Interactive Adjustment
+
+In HITL mode, adjust turns with natural language:
+
+```
+Enter feedback: shorter conversations
+✓ Set to 2 turns
+
+Enter feedback: I want 5 turns
+✓ Set to 5 turns
+
+Enter feedback: more thorough
+✓ Set to 6 turns
+```
+
+## Export Formats
+
+```python
+# Standard messages format (default)
+dataset.save("data.jsonl", format="messages")
+
+# ChatML format
+dataset.save("data.jsonl", format="chatml")
+```

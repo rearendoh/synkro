@@ -1,0 +1,146 @@
+---
+title: create_pipeline()
+description: "Create a customized generation pipeline"
+---
+
+## Signature
+
+```python
+synkro.create_pipeline(
+    model: str = "gpt-4o-mini",
+    grading_model: str = "gpt-4o",
+    dataset_type: DatasetType = DatasetType.CONVERSATION,
+    max_iterations: int = 3,
+    skip_grading: bool = False,
+    reporter: ProgressReporter | None = None,
+    tools: list[ToolDefinition] | None = None,
+    checkpoint_dir: str | None = None,
+    enable_hitl: bool = True,
+    base_url: str | None = None,
+    temperature: float = 0.7,
+    thinking: bool = False,
+) -> Pipeline
+```
+
+## Parameters
+
+<ParamField path="model" type="str" default="gpt-4o-mini">
+  Model for generating responses
+</ParamField>
+
+<ParamField path="grading_model" type="str" default="gpt-4o">
+  Model for grading responses (use stronger model)
+</ParamField>
+
+<ParamField path="dataset_type" type="DatasetType" default="CONVERSATION">
+  Type of dataset to generate
+</ParamField>
+
+<ParamField path="max_iterations" type="int" default="3">
+  Max refinement iterations per trace
+</ParamField>
+
+<ParamField path="skip_grading" type="bool" default="False">
+  Skip grading phase for faster generation
+</ParamField>
+
+<ParamField path="tools" type="list[ToolDefinition]" default="None">
+  Tool definitions for TOOL_CALL dataset type
+</ParamField>
+
+<ParamField path="checkpoint_dir" type="str" default="None">
+  Directory for checkpointing (resume interrupted generations)
+</ParamField>
+
+<ParamField path="enable_hitl" type="bool" default="True">
+  Enable Human-in-the-Loop editing
+</ParamField>
+
+<ParamField path="temperature" type="float" default="0.7">
+  Sampling temperature for generation
+</ParamField>
+
+<ParamField path="thinking" type="bool" default="False">
+  Enable thinking mode with `<think>` tags
+</ParamField>
+
+## Returns
+
+`Pipeline` object with `generate()` method.
+
+## Examples
+
+### Basic Pipeline
+
+```python
+from synkro import create_pipeline
+
+pipeline = create_pipeline()
+dataset = pipeline.generate(policy, traces=100)
+```
+
+### Custom Models
+
+```python
+from synkro import create_pipeline
+from synkro.models import Google
+
+pipeline = create_pipeline(
+    model=Google.GEMINI_25_FLASH,
+    grading_model=Google.GEMINI_25_PRO,
+)
+```
+
+### Tool Calling Pipeline
+
+```python
+from synkro import create_pipeline, ToolDefinition, DatasetType
+
+tools = [
+    ToolDefinition(
+        name="search",
+        description="Search the web",
+        parameters={"type": "object", "properties": {...}},
+    )
+]
+
+pipeline = create_pipeline(
+    dataset_type=DatasetType.TOOL_CALL,
+    tools=tools,
+)
+```
+
+### With Checkpointing
+
+```python
+pipeline = create_pipeline(checkpoint_dir="./checkpoints")
+
+# If interrupted, will resume from last checkpoint
+dataset = pipeline.generate(policy, traces=500)
+```
+
+### Thinking Mode
+
+```python
+pipeline = create_pipeline(thinking=True)
+dataset = pipeline.generate(policy, traces=50)
+
+# Output includes <think> tags with reasoning
+```
+
+### Silent Mode
+
+```python
+from synkro import create_pipeline, SilentReporter
+
+pipeline = create_pipeline(reporter=SilentReporter())
+```
+
+### Fast Generation (Skip Grading)
+
+```python
+pipeline = create_pipeline(skip_grading=True)
+
+# Faster but no quality verification
+dataset = pipeline.generate(policy, traces=100)
+```

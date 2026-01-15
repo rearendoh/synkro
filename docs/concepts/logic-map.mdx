@@ -1,0 +1,87 @@
+---
+title: Logic Map
+description: "Structured rule extraction from your policies"
+---
+
+## What is a Logic Map?
+
+A Logic Map is a structured representation of your policy's rules. Instead of treating your policy as unstructured text, Synkro extracts discrete rules with:
+
+- **Rule ID** - Unique identifier (R001, R002, etc.)
+- **Text** - The rule statement
+- **Category** - Type of rule (threshold, requirement, permission, etc.)
+- **Condition** - When the rule applies
+- **Action** - What should happen
+- **Dependencies** - Other rules this depends on
+
+## Example
+
+Given this policy:
+
+```
+All expenses over $50 require manager approval.
+Receipts required for expenses over $25.
+Travel expenses require pre-approval.
+```
+
+Synkro extracts:
+
+```
+R001: Expenses over $50 require manager approval
+  - Category: threshold
+  - Condition: expense > $50
+  - Action: require manager approval
+
+R002: Receipts required for expenses over $25
+  - Category: requirement
+  - Condition: expense > $25
+  - Action: require receipt
+
+R003: Travel expenses require pre-approval
+  - Category: requirement
+  - Condition: expense type = travel
+  - Action: require pre-approval
+```
+
+## Accessing the Logic Map
+
+```python
+result = pipeline.generate(policy, traces=50, return_logic_map=True)
+
+# Inspect rules
+for rule in result.logic_map.rules:
+    print(f"{rule.rule_id}: {rule.text}")
+    print(f"  Category: {rule.category}")
+    print(f"  Dependencies: {rule.dependencies}")
+
+# Get the dataset
+dataset = result.dataset
+```
+
+## Interactive Editing
+
+With `enable_hitl=True`, you can review and edit the Logic Map before generation:
+
+```
+╭────────────────── Logic Map (3 rules) ──────────────────╮
+│ ├── R001: Expenses over $50 require manager approval    │
+│ ├── R002: Receipts required for expenses over $25       │
+│ └── R003: Travel expenses require pre-approval          │
+╰─────────────────────────────────────────────────────────╯
+
+Enter feedback: add a rule for client meals limited to $75
+✓ Added R004: Client meals limited to $75 per person
+
+Enter feedback: done
+```
+
+## Commands
+
+| Input | Action |
+|-------|--------|
+| `remove R002` | Delete a rule |
+| `add a rule for...` | Add new rule |
+| `show R001` | View rule details |
+| `done` | Continue with current Logic Map |
+| `undo` | Revert last change |
+| `reset` | Restore original |

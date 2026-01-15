@@ -1,0 +1,108 @@
+---
+title: grade()
+description: "Grade a response against policy compliance"
+---
+
+## Signature
+
+```python
+synkro.grade(
+    response: str,
+    scenario: EvalScenario,
+    policy: str | Policy,
+    model: str = "gpt-4o",
+    base_url: str | None = None,
+) -> GradeResult
+```
+
+## Parameters
+
+<ParamField path="response" type="str" required>
+  The response from the model being evaluated
+</ParamField>
+
+<ParamField path="scenario" type="EvalScenario" required>
+  The eval scenario with expected_outcome and target_rules
+</ParamField>
+
+<ParamField path="policy" type="str | Policy" required>
+  The policy document for grading context
+</ParamField>
+
+<ParamField path="model" type="str" default="gpt-4o">
+  LLM to use for grading (stronger = better)
+</ParamField>
+
+## Returns
+
+`GradeResult` containing:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `passed` | bool | Whether the response passed |
+| `feedback` | str | Explanation of the grade |
+| `issues` | list[str] | Specific issues found |
+
+## Examples
+
+### Basic Grading
+
+```python
+import synkro
+
+# Generate scenarios
+result = synkro.generate_scenarios(policy, count=100)
+
+# Grade each response
+passed = 0
+failed = 0
+
+for scenario in result.scenarios:
+    response = my_model(scenario.user_message)
+    grade = synkro.grade(response, scenario, policy)
+
+    if grade.passed:
+        passed += 1
+    else:
+        failed += 1
+        print(f"Failed: {scenario.user_message[:50]}...")
+        print(f"Issues: {grade.issues}")
+
+print(f"Pass rate: {passed}/{passed+failed}")
+```
+
+### Detailed Analysis
+
+```python
+grade = synkro.grade(response, scenario, policy)
+
+print(f"Passed: {grade.passed}")
+print(f"Feedback: {grade.feedback}")
+
+if not grade.passed:
+    print("Issues:")
+    for issue in grade.issues:
+        print(f"  - {issue}")
+```
+
+### Using Stronger Grading Model
+
+```python
+from synkro.models import Anthropic
+
+grade = synkro.grade(
+    response,
+    scenario,
+    policy,
+    model=Anthropic.CLAUDE_OPUS,  # More thorough grading
+)
+```
+
+## Grading Criteria
+
+The grader evaluates:
+
+1. **Policy Compliance** - Does the response follow the rules?
+2. **Accuracy** - Is the information correct?
+3. **Completeness** - Are all relevant rules addressed?
+4. **Expected Outcome** - Does it match the scenario's expected behavior?

@@ -1,0 +1,118 @@
+---
+title: Tool Calling
+description: "Train models to use custom tools"
+---
+
+## Overview
+
+The **TOOL_CALL** dataset type generates training data for teaching models when and how to use your custom tools.
+
+Best for: Function calling, agent training, tool-use fine-tuning.
+
+## Define Your Tools
+
+```python
+from synkro import create_pipeline, ToolDefinition, DatasetType
+
+web_search = ToolDefinition(
+    name="web_search",
+    description="Search the web for current information",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search query"}
+        },
+        "required": ["query"]
+    },
+    mock_responses=["NYC: 72°F, sunny", "BTC: $67,234"]
+)
+
+calculator = ToolDefinition(
+    name="calculator",
+    description="Perform mathematical calculations",
+    parameters={
+        "type": "object",
+        "properties": {
+            "expression": {"type": "string", "description": "Math expression"}
+        },
+        "required": ["expression"]
+    },
+    mock_responses=["42", "3.14159", "1024"]
+)
+```
+
+## Generate Dataset
+
+```python
+pipeline = create_pipeline(
+    dataset_type=DatasetType.TOOL_CALL,
+    tools=[web_search, calculator],
+)
+
+dataset = pipeline.generate("""
+Use web_search for real-time data like weather, prices.
+Use calculator for math operations.
+Answer general questions directly without tools.
+""", traces=50)
+```
+
+## Output Formats
+
+### OpenAI Function Calling
+
+```python
+dataset.save("tools.jsonl", format="tool_call")
+```
+
+```json
+{"messages": [
+  {"role": "user", "content": "What's the weather in NYC?"},
+  {"role": "assistant", "content": null, "tool_calls": [
+    {"id": "call_abc", "type": "function", "function": {"name": "web_search", "arguments": "{\"query\": \"weather NYC\"}"}}
+  ]},
+  {"role": "tool", "tool_call_id": "call_abc", "content": "NYC: 72°F, sunny"},
+  {"role": "assistant", "content": "The weather in NYC is 72°F and sunny."}
+]}
+```
+
+### ChatML with XML Tags
+
+```python
+dataset.save("tools.jsonl", format="chatml")
+```
+
+```json
+{"messages": [
+  {"role": "user", "content": "What's the weather in NYC?"},
+  {"role": "assistant", "content": "<tool_call>\n{\"name\": \"web_search\", \"arguments\": {\"query\": \"weather NYC\"}}\n</tool_call>"},
+  {"role": "tool", "content": "<tool_response>\nNYC: 72°F, sunny\n</tool_response>"},
+  {"role": "assistant", "content": "The weather in NYC is 72°F and sunny."}
+]}
+```
+
+## Tool Policy Guidelines
+
+Your policy should describe:
+- When to use each tool
+- When NOT to use tools
+- How to handle tool errors
+- Chaining multiple tools
+
+```python
+policy = """
+Tool Usage Guidelines:
+
+1. web_search: Use for real-time information (weather, prices, news)
+   - Do NOT use for general knowledge questions
+   - Always summarize results, don't just repeat them
+
+2. calculator: Use for any math beyond basic arithmetic
+   - Show your work before using the tool
+   - Verify results make sense
+
+3. No tools needed for:
+   - Greetings and small talk
+   - General knowledge questions
+   - Opinion requests
+"""
+```

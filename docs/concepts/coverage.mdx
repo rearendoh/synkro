@@ -1,0 +1,97 @@
+---
+title: Coverage Tracking
+description: "Ensure your dataset covers all policy aspects"
+---
+
+## What is Coverage?
+
+Coverage tracking measures how well your generated scenarios cover different aspects of your policy—like code coverage but for training data.
+
+## Coverage Report
+
+```python
+result = synkro.generate(policy, traces=50, return_logic_map=True)
+print(result.coverage_report)
+```
+
+Output:
+```
+Coverage Report
+========================================
+Overall: 68%
+Sub-categories: 2 covered, 1 partial, 1 uncovered
+
+Gaps:
+  - Receipt requirements [HIGH] (0% coverage)
+  - Travel booking rules [MEDIUM] (40% coverage)
+
+Suggestions:
+  1. Add 3+ scenarios for 'Receipt requirements'
+  2. Add edge_case scenarios for 'Travel booking'
+```
+
+## Coverage Statuses
+
+| Status | Coverage | Description |
+|--------|----------|-------------|
+| **Covered** | 80%+ | Well-tested |
+| **Partial** | 30-80% | Needs more scenarios |
+| **Uncovered** | <30% | Gap in coverage |
+
+## Improving Coverage
+
+### Interactive Mode
+
+Use natural language commands in HITL mode:
+
+```
+Enter feedback: improve coverage for receipt requirements
+✓ Added 5 scenarios for 'Receipt requirements'
+Coverage: 0% → 72%
+
+Enter feedback: get travel booking to 80%
+✓ Added 3 scenarios for 'Travel booking'
+Coverage: 40% → 85%
+```
+
+### Programmatic
+
+```python
+# Access coverage data
+report = result.coverage_report
+
+# Check gaps
+for gap in report.gaps:
+    print(f"Gap: {gap.sub_category} ({gap.coverage_percent}%)")
+
+# Export as dict/JSON
+data = report.to_dict()
+json_str = report.to_json()
+```
+
+## Coverage Metrics
+
+Each sub-category tracks:
+
+| Metric | Description |
+|--------|-------------|
+| `coverage_percent` | % of expected coverage achieved |
+| `scenario_count` | Number of scenarios testing this |
+| `type_distribution` | Breakdown by positive/negative/edge |
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Aim for 80%+" icon="bullseye">
+    High coverage ensures your model sees diverse examples
+  </Card>
+  <Card title="Check Gaps" icon="magnifying-glass">
+    Uncovered areas = potential model blind spots
+  </Card>
+  <Card title="Balance Types" icon="scale-balanced">
+    Mix of positive, negative, and edge cases
+  </Card>
+  <Card title="Iterate" icon="rotate">
+    Generate → Check Coverage → Improve → Repeat
+  </Card>
+</CardGroup>

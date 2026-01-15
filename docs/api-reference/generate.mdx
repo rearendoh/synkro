@@ -1,0 +1,122 @@
+---
+title: generate()
+description: "Generate training datasets from policy"
+---
+
+## Signature
+
+```python
+synkro.generate(
+    policy: str | Policy,
+    traces: int = 20,
+    turns: int | str = "auto",
+    dataset_type: DatasetType = DatasetType.CONVERSATION,
+    generation_model: str = "gpt-4o-mini",
+    grading_model: str = "gpt-4o",
+    max_iterations: int = 3,
+    skip_grading: bool = False,
+    reporter: ProgressReporter | None = None,
+    return_logic_map: bool = False,
+    enable_hitl: bool = True,
+    base_url: str | None = None,
+    temperature: float = 0.7,
+) -> Dataset | GenerationResult
+```
+
+## Parameters
+
+<ParamField path="policy" type="str | Policy" required>
+  Policy text or Policy object
+</ParamField>
+
+<ParamField path="traces" type="int" default="20">
+  Number of traces to generate
+</ParamField>
+
+<ParamField path="turns" type="int | str" default="auto">
+  Conversation turns per trace. Use int for fixed turns, or "auto" for complexity-driven
+</ParamField>
+
+<ParamField path="dataset_type" type="DatasetType" default="CONVERSATION">
+  Type of dataset: CONVERSATION, INSTRUCTION, EVALUATION, TOOL_CALL
+</ParamField>
+
+<ParamField path="generation_model" type="str" default="gpt-4o-mini">
+  Model for generating responses
+</ParamField>
+
+<ParamField path="grading_model" type="str" default="gpt-4o">
+  Model for grading responses
+</ParamField>
+
+<ParamField path="max_iterations" type="int" default="3">
+  Max refinement iterations per trace
+</ParamField>
+
+<ParamField path="skip_grading" type="bool" default="False">
+  Skip grading phase for faster generation
+</ParamField>
+
+<ParamField path="return_logic_map" type="bool" default="False">
+  If True, return GenerationResult with Logic Map access
+</ParamField>
+
+<ParamField path="enable_hitl" type="bool" default="True">
+  Enable Human-in-the-Loop editing
+</ParamField>
+
+<ParamField path="temperature" type="float" default="0.7">
+  Sampling temperature (0.0-2.0)
+</ParamField>
+
+## Returns
+
+- `Dataset` (default) - Generated dataset
+- `GenerationResult` (if `return_logic_map=True`) - Contains dataset, logic_map, and coverage_report
+
+## Examples
+
+### Basic
+
+```python
+import synkro
+
+dataset = synkro.generate("Your policy text...", traces=50)
+dataset.save("training.jsonl")
+```
+
+### With Logic Map Access
+
+```python
+result = synkro.generate(policy, traces=50, return_logic_map=True)
+
+# Inspect rules
+for rule in result.logic_map.rules:
+    print(f"{rule.rule_id}: {rule.text}")
+
+# Check coverage
+print(result.coverage_report)
+
+# Get dataset
+dataset = result.dataset
+```
+
+### Silent Mode
+
+```python
+from synkro import SilentReporter
+
+dataset = synkro.generate(policy, reporter=SilentReporter())
+```
+
+### Custom Models
+
+```python
+from synkro.models import Anthropic
+
+dataset = synkro.generate(
+    policy,
+    generation_model=Anthropic.CLAUDE_SONNET,
+    grading_model=Anthropic.CLAUDE_OPUS,
+)
+```
