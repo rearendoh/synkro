@@ -1,7 +1,11 @@
 {
   "$schema": "https://mintlify.com/schema.json",
   "name": "Synkro",
-  "favicon": "https://mintlify.s3.us-west-1.amazonaws.com/mintlify/logo/light.svg",
+  "logo": {
+    "dark": "/logo.svg",
+    "light": "/logo.svg"
+  },
+  "favicon": "/logo.svg",
   "colors": {
     "primary": "#a855f7",
     "light": "#c084fc",
