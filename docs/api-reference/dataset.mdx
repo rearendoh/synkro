@@ -1,0 +1,346 @@
+---
+title: Dataset
+description: "Dataset class for managing generated traces"
+---
+
+The `Dataset` class is a collection of generated training traces. It provides methods for filtering, saving, and exporting traces in various formats.
+
+## Import
+
+```python
+from synkro import Dataset
+```
+
+## Properties
+
+| Property | Type | Description |
+|----------|------|-------------|
+| `traces` | `list[Trace]` | The list of generated traces |
+| `passing_rate` | `float` | Percentage of traces that passed grading (0.0-1.0) |
+| `categories` | `list[str]` | Unique categories in the dataset |
+
+## Methods
+
+### save()
+
+Save dataset to a JSONL file.
+
+```python
+dataset.save(
+    path: str | Path | None = None,
+    format: str = "messages",
+    pretty_print: bool = False,
+) -> Dataset
+```
+
+<ParamField path="path" type="str | Path" default="auto">
+  Output file path. If None, auto-generates a timestamped filename.
+</ParamField>
+
+<ParamField path="format" type="str" default="messages">
+  Output format: `"messages"`, `"qa"`, `"langsmith"`, `"langfuse"`, `"tool_call"`, `"chatml"`, or `"bert"` / `"bert:<task>"`
+</ParamField>
+
+<ParamField path="pretty_print" type="bool" default="False">
+  If True, format JSON with indentation (multi-line, human-readable)
+</ParamField>
+
+**Returns:** Self (for method chaining)
+
+```python
+# Auto-named file
+dataset.save()  # synkro_messages_2024-01-15_1430.jsonl
+
+# Custom path
+dataset.save("training.jsonl")
+
+# Different formats
+dataset.save("eval.jsonl", format="qa")
+dataset.save("langsmith.jsonl", format="langsmith")
+dataset.save("bert.jsonl", format="bert:classification")
+
+# Human-readable
+dataset.save("readable.jsonl", pretty_print=True)
+```
+
+---
+
+### to_jsonl()
+
+Convert dataset to JSONL string.
+
+```python
+dataset.to_jsonl(
+    format: str = "messages",
+    pretty_print: bool = False,
+) -> str
+```
+
+<ParamField path="format" type="str" default="messages">
+  Output format (same options as `save()`)
+</ParamField>
+
+<ParamField path="pretty_print" type="bool" default="False">
+  Format with indentation
+</ParamField>
+
+**Returns:** JSONL formatted string
+
+```python
+jsonl_str = dataset.to_jsonl()
+jsonl_str = dataset.to_jsonl(format="chatml")
+```
+
+---
+
+### filter()
+
+Filter traces by criteria. Returns a new Dataset with filtered traces.
+
+```python
+dataset.filter(
+    passed: bool | None = None,
+    category: str | None = None,
+    min_length: int | None = None,
+) -> Dataset
+```
+
+<ParamField path="passed" type="bool" default="None">
+  Filter by grade pass/fail status
+</ParamField>
+
+<ParamField path="category" type="str" default="None">
+  Filter by scenario category
+</ParamField>
+
+<ParamField path="min_length" type="int" default="None">
+  Minimum response length in characters
+</ParamField>
+
+**Returns:** New Dataset with filtered traces
+
+```python
+# Filter to passing traces only
+passing = dataset.filter(passed=True)
+
+# Filter by category
+refunds = dataset.filter(category="Refund Policy")
+
+# Filter by response length
+long_responses = dataset.filter(min_length=500)
+
+# Chain filters
+high_quality = dataset.filter(passed=True).filter(min_length=200)
+```
+
+---
+
+### dedupe()
+
+Remove duplicate or near-duplicate traces.
+
+```python
+dataset.dedupe(
+    threshold: float = 0.85,
+    method: str = "semantic",
+    field: str = "user",
+) -> Dataset
+```
+
+<ParamField path="threshold" type="float" default="0.85">
+  Similarity threshold (0-1). Higher = stricter dedup. Only used for semantic method.
+</ParamField>
+
+<ParamField path="method" type="str" default="semantic">
+  Deduplication method:
+  - `"exact"`: Remove exact text duplicates (fast)
+  - `"semantic"`: Remove semantically similar traces (requires sentence-transformers)
+</ParamField>
+
+<ParamField path="field" type="str" default="user">
+  Which field to dedupe on: `"user"`, `"assistant"`, or `"both"`
+</ParamField>
+
+**Returns:** New Dataset with duplicates removed
+
+```python
+# Remove exact duplicates (fast)
+deduped = dataset.dedupe(method="exact")
+
+# Remove semantically similar (stricter)
+deduped = dataset.dedupe(threshold=0.9, method="semantic")
+
+# Dedupe based on assistant responses
+deduped = dataset.dedupe(field="assistant")
+```
+
+<Note>
+Semantic deduplication requires the `sentence-transformers` package:
+```bash
+pip install sentence-transformers
+```
+</Note>
+
+---
+
+### to_hf_dataset()
+
+Convert to HuggingFace Dataset.
+
+```python
+dataset.to_hf_dataset(format: str = "messages") -> datasets.Dataset
+```
+
+<ParamField path="format" type="str" default="messages">
+  Output format (same options as `save()`)
+</ParamField>
+
+**Returns:** HuggingFace `datasets.Dataset` object
+
+```python
+hf_dataset = dataset.to_hf_dataset()
+
+# Push to Hub
+hf_dataset.push_to_hub("my-org/policy-traces")
+
+# Train/test split
+split = hf_dataset.train_test_split(test_size=0.1)
+split.push_to_hub("my-org/policy-traces")
+
+# BERT format for encoder models
+hf_dataset = dataset.to_hf_dataset(format="bert:classification")
+```
+
+<Note>
+Requires the `datasets` package:
+```bash
+pip install datasets
+```
+</Note>
+
+---
+
+### push_to_hub()
+
+Push dataset directly to HuggingFace Hub.
+
+```python
+dataset.push_to_hub(
+    repo_id: str,
+    format: str = "messages",
+    private: bool = False,
+    split: str = "train",
+    token: str | None = None,
+) -> str
+```
+
+<ParamField path="repo_id" type="str" required>
+  HuggingFace repo ID (e.g., `"my-org/policy-data"`)
+</ParamField>
+
+<ParamField path="format" type="str" default="messages">
+  Output format
+</ParamField>
+
+<ParamField path="private" type="bool" default="False">
+  Whether the repo should be private
+</ParamField>
+
+<ParamField path="split" type="str" default="train">
+  Dataset split name
+</ParamField>
+
+<ParamField path="token" type="str" default="None">
+  HuggingFace token (uses cached token if not provided)
+</ParamField>
+
+**Returns:** URL of the uploaded dataset
+
+```python
+url = dataset.push_to_hub("my-org/policy-data")
+url = dataset.push_to_hub("my-org/policy-data", private=True)
+```
+
+---
+
+### to_dict()
+
+Convert dataset to a dictionary.
+
+```python
+dataset.to_dict() -> dict
+```
+
+**Returns:** Dictionary with trace data and stats
+
+```python
+d = dataset.to_dict()
+# {
+#   "traces": [...],
+#   "stats": {
+#     "total": 100,
+#     "passing_rate": 0.95,
+#     "categories": ["Refunds", "Returns"]
+#   }
+# }
+```
+
+---
+
+### summary()
+
+Get a human-readable summary of the dataset.
+
+```python
+dataset.summary() -> str
+```
+
+**Returns:** Summary string
+
+```python
+print(dataset.summary())
+# Dataset Summary
+# ===============
+# Total traces: 100
+# Passing rate: 95.0%
+# Categories: 5
+#
+# By category:
+#   - Refunds: 25
+#   - Returns: 20
+#   ...
+```
+
+---
+
+## Container Protocol
+
+Dataset supports standard Python container operations:
+
+```python
+# Length
+len(dataset)  # 100
+
+# Iteration
+for trace in dataset:
+    print(trace.user_message)
+
+# Indexing
+first_trace = dataset[0]
+last_trace = dataset[-1]
+```
+
+---
+
+## Export Format Reference
+
+| Format | Description | Use Case |
+|--------|-------------|----------|
+| `messages` | OpenAI messages format | Fine-tuning GPT models |
+| `chatml` | ChatML format | Alternative chat format |
+| `qa` | Q&A with ground truth | Evaluation datasets |
+| `langsmith` | LangSmith format | LangSmith integration |
+| `langfuse` | Langfuse format | Langfuse integration |
+| `tool_call` | Tool calling format | Function calling datasets |
+| `bert` | BERT classification | Encoder models |
+| `bert:qa` | BERT extractive QA | Question answering |

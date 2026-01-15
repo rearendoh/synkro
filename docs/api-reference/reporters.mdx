@@ -1,0 +1,276 @@
+---
+title: Reporters
+description: "Progress reporting classes for generation pipeline"
+---
+
+Reporters control how synkro displays progress during generation. Choose the right reporter for your use case.
+
+## Import
+
+```python
+from synkro import (
+    RichReporter,        # Rich CLI output (default)
+    SilentReporter,      # No output
+    CallbackReporter,    # Custom callbacks
+    FileLoggingReporter, # Log to file
+    ProgressReporter,    # Protocol for custom reporters
+)
+```
+
+---
+
+## RichReporter
+
+The default reporter with rich console output, progress bars, and formatted tables.
+
+```python
+from synkro import RichReporter, create_pipeline
+
+# Explicit usage (this is the default)
+pipeline = create_pipeline(reporter=RichReporter())
+```
+
+**Output Example:**
+
+```
+Generating 100 traces | CONVERSATION | gpt-5-mini
+Planning 5 categories: Refunds, Returns, Exchanges +2
+Traces 100 generated
+  Category 'Refunds': 25 traces
+    positive User wants refund for damaged item...
+    negative User requests refund after 90 days...
+Grading 95% passed
+
+Complete
+Done!        Generated 100 traces in 2m 15s
+Quality:     95% passed verification
+Cost:        $0.1234
+LLM Calls:   20 scenario + 100 response + 50 grading
+```
+
+---
+
+## SilentReporter
+
+No-op reporter for testing and embedding. Suppresses all console output.
+
+```python
+from synkro import SilentReporter
+
+# No output during generation
+dataset = synkro.generate(policy, reporter=SilentReporter())
+```
+
+---
+
+## CallbackReporter
+
+Invoke custom callbacks for progress events. Use this for programmatic progress tracking.
+
+```python
+from synkro import CallbackReporter
+
+# Generic callback for all events
+def on_progress(event: str, data: dict):
+    print(f"{event}: {data}")
+
+reporter = CallbackReporter(on_progress=on_progress)
+
+# Or specific callbacks
+reporter = CallbackReporter(
+    on_start=lambda traces, model, dtype: print(f"Starting {traces} traces"),
+    on_complete=lambda size, elapsed, rate: print(f"Done! {size} traces"),
+    on_grading_complete=lambda traces, rate: print(f"Pass rate: {rate:.0%}"),
+)
+
+dataset = synkro.generate(policy, reporter=reporter)
+```
+
+### Available Callbacks
+
+| Callback | Arguments | Description |
+|----------|-----------|-------------|
+| `on_progress` | `(event: str, data: dict)` | Generic callback for all events |
+| `on_start` | `(traces, model, dataset_type)` | Generation started |
+| `on_plan_complete` | `(plan)` | Planning phase complete |
+| `on_scenario_progress` | `(completed, total)` | Scenario generation progress |
+| `on_scenarios_complete` | `(scenarios)` | All scenarios generated |
+| `on_response_progress` | `(completed, total)` | Response generation progress |
+| `on_responses_complete` | `(traces)` | All responses generated |
+| `on_grading_progress` | `(completed, total)` | Grading progress |
+| `on_grading_complete` | `(traces, pass_rate)` | Grading complete |
+| `on_complete` | `(size, elapsed, pass_rate)` | Generation complete |
+
+### Event Names
+
+When using `on_progress`, these event names are emitted:
+
+- `start`
+- `plan_complete`
+- `scenario_progress`
+- `scenarios_complete`
+- `response_progress`
+- `responses_complete`
+- `grading_progress`
+- `grading_complete`
+- `refinement_start`
+- `grading_skipped`
+- `complete`
+- `logic_map_complete`
+- `golden_scenarios_complete`
+- `taxonomy_extracted`
+- `coverage_calculated`
+- `coverage_improved`
+
+---
+
+## FileLoggingReporter
+
+Log events to a file while delegating display to another reporter.
+
+```python
+from synkro import FileLoggingReporter, SilentReporter
+
+# Log to file + show CLI output (default delegate is RichReporter)
+reporter = FileLoggingReporter(log_dir="./logs")
+
+# Log to file only (no console output)
+reporter = FileLoggingReporter(
+    delegate=SilentReporter(),
+    log_dir="./logs"
+)
+
+# Custom filename
+reporter = FileLoggingReporter(
+    log_dir="./logs",
+    log_filename="generation_run_001.log"
+)
+
+dataset = synkro.generate(policy, reporter=reporter)
+
+# Access log file path
+print(f"Log saved: {reporter.log_path}")
+```
+
+### Log Format
+
+```
+=== Synkro Generation Log ===
+Started: 2024-01-15T14:30:00
+Log file: ./logs/synkro_log_2024-01-15_1430.log
+==================================================
+[14:30:01] STARTED: Generating 100 traces
+[14:30:01]   Model: gpt-5-mini
+[14:30:01]   Dataset type: CONVERSATION
+[14:30:05] PLAN COMPLETE: 5 categories
+[14:30:05]   - Refunds: Refund request handling (count: 25)
+[14:30:30] SCENARIOS: Generated 100 golden scenarios
+[14:31:00] RESPONSES COMPLETE: 100 traces generated
+[14:31:30] GRADING COMPLETE: 95.0% passed
+==================================================
+[14:32:00] COMPLETE: Generated 100 traces in 2m 0s
+[14:32:00]   Quality: 95.0% passed
+[14:32:00]   Cost: $0.1234
+==================================================
+```
+
+---
+
+## Custom Reporters
+
+Implement `ProgressReporter` protocol for custom reporting:
+
+```python
+from synkro import ProgressReporter
+from synkro.types import Plan, Trace
+
+class CustomReporter:
+    """Custom reporter implementation."""
+
+    def on_start(self, traces: int, model: str, dataset_type: str) -> None:
+        # Called when generation starts
+        pass
+
+    def on_plan_complete(self, plan: Plan) -> None:
+        # Called when planning completes
+        pass
+
+    def on_scenario_progress(self, completed: int, total: int) -> None:
+        # Called during scenario generation
+        pass
+
+    def on_response_progress(self, completed: int, total: int) -> None:
+        # Called during response generation
+        pass
+
+    def on_responses_complete(self, traces: list[Trace]) -> None:
+        # Called when all responses are generated
+        pass
+
+    def on_grading_progress(self, completed: int, total: int) -> None:
+        # Called during grading
+        pass
+
+    def on_grading_complete(self, traces: list[Trace], pass_rate: float) -> None:
+        # Called when grading completes
+        pass
+
+    def on_refinement_start(self, iteration: int, failed_count: int) -> None:
+        # Called when refinement iteration starts
+        pass
+
+    def on_grading_skipped(self) -> None:
+        # Called when grading is skipped
+        pass
+
+    def on_complete(
+        self,
+        dataset_size: int,
+        elapsed_seconds: float,
+        pass_rate: float | None,
+        total_cost: float | None = None,
+        **kwargs
+    ) -> None:
+        # Called when generation completes
+        pass
+
+    def on_logic_map_complete(self, logic_map) -> None:
+        # Called when logic extraction completes
+        pass
+
+    def on_golden_scenarios_complete(self, scenarios, distribution) -> None:
+        # Called when golden scenarios are generated
+        pass
+
+    def on_taxonomy_extracted(self, taxonomy) -> None:
+        # Called when taxonomy is extracted
+        pass
+
+    def on_coverage_calculated(self, report) -> None:
+        # Called when coverage is calculated
+        pass
+
+    def on_coverage_improved(self, before, after, added_scenarios) -> None:
+        # Called when coverage is improved
+        pass
+
+    def spinner(self, message: str = "Thinking..."):
+        # Return a context manager for showing loading spinner
+        return NoOpContextManager()
+
+
+# Use custom reporter
+dataset = synkro.generate(policy, reporter=CustomReporter())
+```
+
+---
+
+## Choosing a Reporter
+
+| Use Case | Reporter |
+|----------|----------|
+| Interactive CLI | `RichReporter` (default) |
+| Testing/CI | `SilentReporter` |
+| Programmatic tracking | `CallbackReporter` |
+| Audit logging | `FileLoggingReporter` |
+| Custom integration | Implement `ProgressReporter` |

@@ -1,0 +1,107 @@
+---
+title: Checkpointing
+description: "Resume interrupted generation jobs"
+---
+
+For large generation jobs, synkro supports checkpointing to save progress and resume if interrupted.
+
+## Enabling Checkpointing
+
+```python
+from synkro import create_pipeline
+
+pipeline = create_pipeline(
+    checkpoint_dir="./checkpoints"
+)
+
+# If interrupted, re-running will resume from last checkpoint
+dataset = pipeline.generate(policy, traces=500)
+```
+
+## How It Works
+
+1. **Policy Hash**: Each policy gets a unique hash based on its content
+2. **Phase Checkpoints**: Progress is saved after each major phase:
+   - Logic Map extraction
+   - Scenario generation
+   - Response generation
+   - Grading
+3. **Automatic Resume**: On restart, synkro detects existing checkpoints and continues
+
+## Checkpoint Directory Structure
+
+```
+checkpoints/
+  policy_abc123/
+    logic_map.json       # Extracted rules
+    scenarios.json       # Generated scenarios
+    traces_partial.json  # Partial trace data
+    metadata.json        # Run configuration
+```
+
+## Clearing Checkpoints
+
+To start fresh instead of resuming:
+
+```python
+import shutil
+
+# Remove checkpoint directory before running
+shutil.rmtree("./checkpoints", ignore_errors=True)
+
+pipeline = create_pipeline(checkpoint_dir="./checkpoints")
+dataset = pipeline.generate(policy, traces=500)
+```
+
+## Use Cases
+
+### Large Production Runs
+
+```python
+# For large datasets, always enable checkpointing
+pipeline = create_pipeline(
+    checkpoint_dir="./checkpoints",
+    enable_hitl=False,  # Disable interactive mode for batch runs
+)
+
+dataset = pipeline.generate(policy, traces=5000)
+```
+
+### Iterative Development
+
+```python
+# Checkpoint during development to avoid re-running expensive phases
+pipeline = create_pipeline(checkpoint_dir="./dev_checkpoints")
+
+# First run: Full generation
+dataset = pipeline.generate(policy, traces=100)
+
+# If you need to re-run with different grading settings,
+# the logic map and scenarios are cached
+```
+
+### CI/CD Pipelines
+
+```python
+import os
+
+pipeline = create_pipeline(
+    checkpoint_dir=os.environ.get("CHECKPOINT_DIR", "./checkpoints")
+)
+
+# CI job can be restarted without losing progress
+dataset = pipeline.generate(policy, traces=1000)
+```
+
+## Best Practices
+
+1. **Use unique checkpoint dirs** for different policies or experiments
+2. **Clear checkpoints** when changing policy content significantly
+3. **Enable for jobs > 100 traces** to avoid losing progress
+4. **Disable HITL** for batch checkpoint runs (can't resume interactive sessions)
+
+## Limitations
+
+- HITL (Human-in-the-Loop) sessions cannot be checkpointed mid-session
+- Changing model parameters between runs may produce inconsistent results
+- Checkpoint format may change between synkro versions

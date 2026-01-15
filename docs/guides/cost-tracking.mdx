@@ -1,0 +1,140 @@
+---
+title: Cost Tracking
+description: "Monitor LLM costs and API calls during generation"
+---
+
+Synkro automatically tracks LLM costs and API calls during generation. This helps you monitor usage and optimize your generation pipeline.
+
+## Viewing Costs
+
+When generation completes, the `RichReporter` displays cost information:
+
+```
+Complete
+Done!        Generated 100 traces in 2m 15s
+Quality:     95% passed verification
+Cost:        $0.1234
+LLM Calls:   20 scenario + 100 response + 50 grading
+```
+
+## Programmatic Access
+
+For programmatic access to costs, use the `LLM` class directly:
+
+```python
+from synkro import create_pipeline
+from synkro.llm import LLM
+
+# Create pipeline
+pipeline = create_pipeline()
+
+# Generate
+result = pipeline.generate(policy, traces=100, return_logic_map=True)
+
+# Access LLM stats from factory
+# Note: Costs are calculated based on token usage and model pricing
+```
+
+## Cost Breakdown by Phase
+
+The generation pipeline has several phases, each with its own LLM calls:
+
+| Phase | Description |
+|-------|-------------|
+| `scenario` | Generating test scenarios from policy |
+| `coverage` | Coverage calculation and improvement |
+| `hitl` | Human-in-the-Loop editing calls |
+| `response` | Generating assistant responses |
+| `refinement` | Refining failed responses |
+| `grading` | Verifying response quality |
+
+## Reducing Costs
+
+### Use Smaller Models for Generation
+
+```python
+from synkro import create_pipeline
+from synkro.models import OpenAI
+
+pipeline = create_pipeline(
+    model=OpenAI.GPT_5_MINI,      # Cheaper generation model
+    grading_model=OpenAI.GPT_52,  # Keep strong grading model
+)
+```
+
+### Skip Grading for Exploratory Runs
+
+```python
+pipeline = create_pipeline(skip_grading=True)
+dataset = pipeline.generate(policy, traces=100)
+```
+
+### Generate Fewer Traces
+
+```python
+# Start small, scale up when satisfied
+dataset = synkro.generate(policy, traces=10)  # Quick test
+# dataset = synkro.generate(policy, traces=1000)  # Production run
+```
+
+### Use Local Models
+
+```python
+from synkro import create_pipeline
+from synkro.models import Local
+
+pipeline = create_pipeline(
+    model=Local.llama("llama3.2:latest"),
+    base_url="http://localhost:11434/v1",  # Ollama
+)
+```
+
+## Cost Estimation
+
+Approximate costs per 100 traces (varies by policy complexity):
+
+| Model | Estimated Cost |
+|-------|---------------|
+| GPT-5-mini | ~$0.05 |
+| GPT-5.2 | ~$0.20 |
+| Claude 4.5 Sonnet | ~$0.15 |
+| Gemini 2.5 Flash | ~$0.03 |
+| Local (Ollama) | $0.00 |
+
+<Note>
+Actual costs depend on policy length, response complexity, and number of refinement iterations.
+</Note>
+
+## Silent Cost Tracking
+
+To track costs without console output, use `FileLoggingReporter`:
+
+```python
+from synkro import FileLoggingReporter, SilentReporter
+
+reporter = FileLoggingReporter(
+    delegate=SilentReporter(),  # No console output
+    log_dir="./logs"
+)
+
+dataset = synkro.generate(policy, reporter=reporter)
+
+# Check the log file for cost information
+print(f"Log: {reporter.log_path}")
+```
+
+## Callback for Real-time Cost Tracking
+
+```python
+from synkro import CallbackReporter
+
+def on_progress(event: str, data: dict):
+    if event == "complete":
+        print(f"Total cost: ${data.get('total_cost', 0):.4f}")
+        print(f"Scenario calls: {data.get('scenario_calls', 0)}")
+        print(f"Response calls: {data.get('response_calls', 0)}")
+        print(f"Grading calls: {data.get('grading_calls', 0)}")
+
+reporter = CallbackReporter(on_progress=on_progress)
+dataset = synkro.generate(policy, reporter=reporter)
+```

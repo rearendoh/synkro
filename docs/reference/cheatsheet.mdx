@@ -1,0 +1,262 @@
+---
+title: Quick Reference
+description: "Copy-paste patterns for common synkro operations"
+---
+
+## Imports
+
+```python
+# Primary API
+import synkro
+from synkro import generate, create_pipeline, generate_scenarios, grade
+
+# Types
+from synkro import Policy, Dataset, DatasetType, ToolDefinition
+from synkro import GenerationResult, ScenariosResult, CoverageReport
+
+# Reporters
+from synkro import RichReporter, SilentReporter, CallbackReporter, FileLoggingReporter
+
+# Model constants
+from synkro.models import OpenAI, Anthropic, Google, Local
+```
+
+---
+
+## Generate Dataset
+
+```python
+# Simple - just policy text
+dataset = synkro.generate("Your policy text here...", traces=100)
+dataset.save("training.jsonl")
+
+# From Policy object
+policy = Policy(text="Your policy...")
+dataset = synkro.generate(policy, traces=100)
+
+# With coverage tracking (returns GenerationResult)
+result = synkro.generate(policy, traces=100, return_logic_map=True)
+result.dataset          # Dataset
+result.logic_map        # LogicMap with extracted rules
+result.coverage_report  # CoverageReport with metrics
+```
+
+---
+
+## Dataset Types
+
+```python
+from synkro import DatasetType
+
+DatasetType.CONVERSATION   # Multi-turn chat (default)
+DatasetType.INSTRUCTION    # Single-turn Q&A
+DatasetType.EVALUATION     # Test scenarios with ground truth
+DatasetType.TOOL_CALL      # Function calling traces
+```
+
+---
+
+## Export Formats
+
+```python
+# Save to JSONL
+dataset.save("output.jsonl")
+dataset.save("output.jsonl", format="messages")      # OpenAI messages format (default)
+dataset.save("output.jsonl", format="chatml")        # ChatML format
+dataset.save("output.jsonl", format="qa")            # Q&A with ground truth
+dataset.save("output.jsonl", format="langsmith")     # LangSmith format
+dataset.save("output.jsonl", format="langfuse")      # Langfuse format
+dataset.save("output.jsonl", format="tool_call")     # Tool calling format
+dataset.save("output.jsonl", format="bert")          # BERT classification
+dataset.save("output.jsonl", pretty_print=True)      # Human-readable
+
+# To JSONL string
+jsonl_str = dataset.to_jsonl(format="messages")
+
+# To HuggingFace Dataset
+hf_dataset = dataset.to_hf_dataset()
+hf_dataset.push_to_hub("org/dataset-name")
+
+# Direct push to HuggingFace
+dataset.push_to_hub("org/dataset-name", private=True)
+```
+
+---
+
+## Model Constants
+
+```python
+from synkro.models import OpenAI, Anthropic, Google
+
+# OpenAI
+OpenAI.GPT_52           # gpt-5.2 (flagship)
+OpenAI.GPT_5_MINI       # gpt-5-mini (balanced)
+OpenAI.GPT_5_NANO       # gpt-5-nano (edge)
+OpenAI.GPT_4O           # gpt-4o (legacy)
+OpenAI.GPT_4O_MINI      # gpt-4o-mini (legacy)
+OpenAI.O3               # o3 (reasoning)
+OpenAI.O3_MINI          # o3-mini (reasoning)
+
+# Anthropic
+Anthropic.CLAUDE_45_OPUS    # claude-opus-4-5 (premium)
+Anthropic.CLAUDE_45_SONNET  # claude-sonnet-4-5 (standard)
+Anthropic.CLAUDE_45_HAIKU   # claude-haiku-4-5 (light)
+Anthropic.CLAUDE_4_SONNET   # claude-sonnet-4
+Anthropic.CLAUDE_35_SONNET  # claude-3-5-sonnet (legacy)
+
+# Google
+Google.GEMINI_3_PRO         # gemini-3-pro
+Google.GEMINI_3_FLASH       # gemini-3-flash
+Google.GEMINI_25_PRO        # gemini-2.5-pro
+Google.GEMINI_25_FLASH      # gemini-2.5-flash
+```
+
+---
+
+## Pipeline Customization
+
+```python
+from synkro import create_pipeline, DatasetType
+
+pipeline = create_pipeline(
+    model="gpt-5-mini",              # Generation model
+    grading_model="gpt-5.2",         # Grading model (stronger = better)
+    dataset_type=DatasetType.CONVERSATION,
+    max_iterations=3,                # Refinement iterations
+    skip_grading=False,              # Skip verification
+    temperature=0.7,                 # 0.0-2.0
+    thinking=False,                  # Enable <think> tags
+    checkpoint_dir="./checkpoints",  # Resume interrupted jobs
+    enable_hitl=True,                # Human-in-the-Loop editing
+)
+
+dataset = pipeline.generate(policy, traces=100)
+```
+
+---
+
+## Eval Workflow
+
+```python
+import synkro
+
+# Generate test scenarios (no synthetic responses)
+result = synkro.generate_scenarios(policy, count=100)
+
+# Evaluate your model
+for scenario in result.scenarios:
+    response = my_model(scenario.user_message)
+    grade = synkro.grade(response, scenario, policy)
+
+    if grade.passed:
+        print("Pass")
+    else:
+        print(f"Fail: {grade.feedback}")
+        print(f"Issues: {grade.issues}")
+```
+
+---
+
+## Dataset Filtering
+
+```python
+# Filter by grade
+passing = dataset.filter(passed=True)
+failing = dataset.filter(passed=False)
+
+# Filter by category
+refunds = dataset.filter(category="Refunds")
+
+# Filter by response length
+long_responses = dataset.filter(min_length=500)
+
+# Remove duplicates
+deduped = dataset.dedupe(method="exact")           # Fast, exact match
+deduped = dataset.dedupe(threshold=0.85)           # Semantic similarity
+deduped = dataset.dedupe(field="user")             # Dedupe on user messages
+deduped = dataset.dedupe(field="assistant")        # Dedupe on responses
+```
+
+---
+
+## Tool Calling
+
+```python
+from synkro import create_pipeline, ToolDefinition, DatasetType
+
+tools = [
+    ToolDefinition(
+        name="search",
+        description="Search the web",
+        parameters={
+            "type": "object",
+            "properties": {
+                "query": {"type": "string", "description": "Search query"}
+            },
+            "required": ["query"]
+        },
+        mock_responses=["Search results for: ..."]
+    )
+]
+
+pipeline = create_pipeline(
+    dataset_type=DatasetType.TOOL_CALL,
+    tools=tools,
+)
+dataset = pipeline.generate(policy, traces=50)
+```
+
+---
+
+## Silent Mode
+
+```python
+from synkro import SilentReporter, FileLoggingReporter
+
+# No console output
+dataset = synkro.generate(policy, reporter=SilentReporter())
+
+# Log to file + console
+reporter = FileLoggingReporter(log_dir="./logs")
+dataset = synkro.generate(policy, reporter=reporter)
+
+# Log to file only
+reporter = FileLoggingReporter(delegate=SilentReporter(), log_dir="./logs")
+dataset = synkro.generate(policy, reporter=reporter)
+```
+
+---
+
+## Coverage Report
+
+```python
+# Get coverage with generation
+result = synkro.generate(policy, return_logic_map=True)
+
+# Access coverage report
+report = result.coverage_report
+print(f"Overall: {report.overall_coverage_percent}%")
+print(f"Covered: {report.covered_count}")
+print(f"Gaps: {report.gaps}")
+
+# Export coverage
+report.print()           # Pretty print to console
+report.to_dict()         # As dictionary
+report.to_json()         # As JSON string
+```
+
+---
+
+## Built-in Policies
+
+```python
+from synkro.policies import customer_support, expense_approval, content_moderation
+
+# Use built-in policy
+dataset = synkro.generate(customer_support, traces=100)
+
+# Available policies:
+# - customer_support: Customer service guidelines
+# - expense_approval: Expense reimbursement rules
+# - content_moderation: Content policy rules
+```

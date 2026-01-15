@@ -1,0 +1,418 @@
+---
+title: Types
+description: "All public type definitions in synkro"
+---
+
+## Import
+
+```python
+from synkro import (
+    # Core types
+    Message, Trace, Scenario, EvalScenario,
+    GradeResult, Plan, Category,
+    # Tool types
+    ToolDefinition, ToolCall, ToolFunction, ToolResult,
+    # Result types
+    GenerationResult, ScenariosResult, CoverageReport,
+    # Enums
+    DatasetType,
+)
+```
+
+---
+
+## DatasetType
+
+Enum for dataset generation types.
+
+```python
+from synkro import DatasetType
+
+DatasetType.CONVERSATION   # Multi-turn chat conversations
+DatasetType.INSTRUCTION    # Single-turn Q&A pairs
+DatasetType.EVALUATION     # Test scenarios with ground truth
+DatasetType.TOOL_CALL      # Function/tool calling traces
+```
+
+---
+
+## Message
+
+A single message in a conversation.
+
+```python
+from synkro import Message
+
+Message(
+    role: Literal["system", "user", "assistant", "tool"],
+    content: str | None = None,
+    tool_calls: list[ToolCall] | None = None,
+    tool_call_id: str | None = None,
+)
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `role` | `str` | Message role: `"system"`, `"user"`, `"assistant"`, or `"tool"` |
+| `content` | `str \| None` | Message content text |
+| `tool_calls` | `list[ToolCall] \| None` | Tool calls made by assistant |
+| `tool_call_id` | `str \| None` | ID of tool call this message responds to (for tool role) |
+
+```python
+# Regular message
+user_msg = Message(role="user", content="Hello")
+
+# Assistant with tool call
+assistant_msg = Message(
+    role="assistant",
+    content=None,
+    tool_calls=[ToolCall(...)]
+)
+
+# Tool response
+tool_msg = Message(
+    role="tool",
+    content="Result data",
+    tool_call_id="call_123"
+)
+```
+
+---
+
+## Trace
+
+A complete training trace with messages and metadata.
+
+```python
+from synkro import Trace
+
+Trace(
+    messages: list[Message],
+    scenario: Scenario,
+    grade: GradeResult | None = None,
+    reasoning_chain: list | None = None,
+    rules_applied: list[str] | None = None,
+    rules_excluded: list[str] | None = None,
+)
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `messages` | `list[Message]` | The conversation messages |
+| `scenario` | `Scenario` | The scenario this trace was generated from |
+| `grade` | `GradeResult \| None` | Grading result if graded |
+| `reasoning_chain` | `list \| None` | Chain-of-thought reasoning steps |
+| `rules_applied` | `list[str] \| None` | Rule IDs that were applied |
+| `rules_excluded` | `list[str] \| None` | Rule IDs that were excluded |
+
+**Properties:**
+
+```python
+trace.system_message    # str | None - System message content
+trace.user_message      # str - First user message content
+trace.assistant_message # str - Last assistant message content
+trace.has_tool_calls    # bool - Whether trace contains tool calls
+```
+
+---
+
+## Scenario
+
+A test scenario for trace generation.
+
+```python
+from synkro import Scenario
+
+Scenario(
+    description: str,
+    context: str,
+    category: str | None = None,
+    scenario_type: str | None = None,
+    target_rule_ids: list[str] | None = None,
+    expected_outcome: str | None = None,
+)
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `description` | `str` | The scenario description |
+| `context` | `str` | Additional context and background |
+| `category` | `str \| None` | Category this scenario belongs to |
+| `scenario_type` | `str \| None` | Type: `"positive"`, `"negative"`, `"edge_case"`, `"irrelevant"` |
+| `target_rule_ids` | `list[str] \| None` | Rule IDs this scenario tests |
+| `expected_outcome` | `str \| None` | Expected behavior based on rules |
+
+---
+
+## EvalScenario
+
+A scenario for evaluation with ground truth labels. Used by `generate_scenarios()` for eval dataset generation.
+
+```python
+from synkro import EvalScenario
+
+EvalScenario(
+    user_message: str,
+    expected_outcome: str,
+    target_rule_ids: list[str] = [],
+    scenario_type: str,
+    category: str = "",
+    context: str = "",
+)
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `user_message` | `str` | The user's request (test input) |
+| `expected_outcome` | `str` | Expected behavior based on policy rules |
+| `target_rule_ids` | `list[str]` | Rule IDs this scenario tests |
+| `scenario_type` | `str` | Type: `"positive"`, `"negative"`, `"edge_case"`, `"irrelevant"` |
+| `category` | `str` | Policy category this scenario belongs to |
+| `context` | `str` | Additional context for the scenario |
+
+```python
+scenarios = synkro.generate_scenarios(policy, count=100)
+for scenario in scenarios.scenarios:
+    response = my_model(scenario.user_message)
+    grade = synkro.grade(response, scenario, policy)
+```
+
+---
+
+## GradeResult
+
+Result of grading a trace.
+
+```python
+from synkro import GradeResult
+
+GradeResult(
+    passed: bool,
+    issues: list[str] = [],
+    feedback: str = "",
+)
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `passed` | `bool` | Whether the trace passes quality checks |
+| `issues` | `list[str]` | List of issues found |
+| `feedback` | `str` | Summary feedback for improvement |
+
+```python
+grade = synkro.grade(response, scenario, policy)
+if grade.passed:
+    print("Pass!")
+else:
+    print(f"Fail: {grade.feedback}")
+    for issue in grade.issues:
+        print(f"  - {issue}")
+```
+
+---
+
+## GenerationResult
+
+Result of the generation pipeline when `return_logic_map=True`.
+
+```python
+from synkro import GenerationResult
+
+# Fields
+result.dataset          # Dataset - The generated traces
+result.logic_map        # LogicMap | None - Extracted policy rules
+result.scenarios        # list - Generated scenarios
+result.distribution     # dict[str, int] - Scenario type distribution
+result.coverage_report  # CoverageReport | None - Coverage metrics
+```
+
+```python
+result = synkro.generate(policy, return_logic_map=True)
+
+# Access dataset
+dataset = result.dataset
+dataset.save("training.jsonl")
+
+# Inspect logic map
+for rule in result.logic_map.rules:
+    print(f"{rule.rule_id}: {rule.text}")
+
+# View coverage
+print(f"Coverage: {result.coverage_report.overall_coverage_percent}%")
+```
+
+---
+
+## ScenariosResult
+
+Result of scenario-only generation for eval datasets.
+
+```python
+from synkro import ScenariosResult
+
+# Fields
+result.scenarios     # list[EvalScenario] - Test scenarios
+result.logic_map     # LogicMap - Extracted policy rules
+result.distribution  # dict[str, int] - Scenario type distribution
+```
+
+```python
+result = synkro.generate_scenarios(policy, count=100)
+for scenario in result.scenarios:
+    print(f"[{scenario.scenario_type}] {scenario.user_message}")
+```
+
+---
+
+## CoverageReport
+
+Coverage metrics for a generation run.
+
+```python
+from synkro import CoverageReport
+
+# Fields
+report.total_scenarios           # int - Total scenarios generated
+report.total_sub_categories      # int - Total sub-categories in taxonomy
+report.covered_count             # int - Fully covered sub-categories
+report.partial_count             # int - Partially covered sub-categories
+report.uncovered_count           # int - Uncovered sub-categories
+report.overall_coverage_percent  # float - Overall coverage (0-100)
+report.gaps                      # list[str] - Identified coverage gaps
+report.suggestions               # list[str] - Improvement suggestions
+report.sub_category_coverage     # list[SubCategoryCoverage] - Per sub-category details
+```
+
+**Methods:**
+
+```python
+report.print()           # Pretty print to console
+report.to_dict()         # Convert to dictionary
+report.to_json()         # Convert to JSON string
+report.get_uncovered()   # Get uncovered sub-categories
+report.get_partial()     # Get partially covered sub-categories
+```
+
+---
+
+## ToolDefinition
+
+Definition of a tool that an agent can use.
+
+```python
+from synkro import ToolDefinition
+
+ToolDefinition(
+    name: str,
+    description: str,
+    parameters: dict = {"type": "object", "properties": {}},
+    examples: list[dict] = [],
+    mock_responses: list[str] = [],
+)
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `name` | `str` | Name of the tool |
+| `description` | `str` | What the tool does |
+| `parameters` | `dict` | JSON Schema for parameters |
+| `examples` | `list[dict]` | Example tool calls for few-shot learning |
+| `mock_responses` | `list[str]` | Example responses for simulation |
+
+```python
+search_tool = ToolDefinition(
+    name="web_search",
+    description="Search the web for current information",
+    parameters={
+        "type": "object",
+        "properties": {
+            "query": {"type": "string", "description": "Search query"}
+        },
+        "required": ["query"]
+    },
+    examples=[{"query": "weather in NYC"}],
+    mock_responses=["NYC: 72F, sunny"]
+)
+
+# Convert to OpenAI format
+openai_tool = search_tool.to_openai_format()
+```
+
+---
+
+## ToolCall
+
+A tool call made by the assistant.
+
+```python
+from synkro import ToolCall, ToolFunction
+
+ToolCall(
+    id: str,
+    type: str = "function",
+    function: ToolFunction,
+)
+```
+
+---
+
+## ToolFunction
+
+Function details within a tool call.
+
+```python
+from synkro import ToolFunction
+
+ToolFunction(
+    name: str,
+    arguments: str,  # JSON string
+)
+```
+
+---
+
+## ToolResult
+
+Result from a tool execution.
+
+```python
+from synkro import ToolResult
+
+ToolResult(
+    tool_call_id: str,
+    content: str,
+)
+```
+
+---
+
+## Plan
+
+A generation plan with categories and complexity analysis.
+
+```python
+from synkro import Plan, Category
+
+Plan(
+    categories: list[Category],
+    reasoning: str,
+    recommended_turns: int = 1,
+    complexity_level: Literal["simple", "conditional", "complex"] = "simple",
+)
+```
+
+---
+
+## Category
+
+A category for organizing scenarios.
+
+```python
+from synkro import Category
+
+Category(
+    name: str,
+    description: str,
+    count: int,
+)
+```

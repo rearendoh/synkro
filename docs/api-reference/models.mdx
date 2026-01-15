@@ -1,0 +1,210 @@
+---
+title: Model Constants
+description: "Supported LLM providers and model constants"
+---
+
+Synkro supports multiple LLM providers through model constants. Use these for type-safe model selection.
+
+## Import
+
+```python
+from synkro.models import OpenAI, Anthropic, Google, Local, LocalModel
+```
+
+---
+
+## OpenAI
+
+```python
+from synkro.models import OpenAI
+
+# GPT-5 Series (Latest)
+OpenAI.GPT_52        # "gpt-5.2" - Flagship: human-like dialogue, agentic tool-calling
+OpenAI.GPT_5_MINI    # "gpt-5-mini" - Balanced cost and intelligence, primary workhorse
+OpenAI.GPT_5_NANO    # "gpt-5-nano" - Extremely low latency, high-volume basic tasks
+
+# GPT-4 Series (Legacy)
+OpenAI.GPT_41        # "gpt-4.1" - Legacy flagship
+OpenAI.GPT_4O        # "gpt-4o"
+OpenAI.GPT_4O_MINI   # "gpt-4o-mini"
+
+# Reasoning Models
+OpenAI.O3            # "o3" - Advanced reasoning
+OpenAI.O3_MINI       # "o3-mini" - Compact reasoning
+OpenAI.O1            # "o1" - Original reasoning
+OpenAI.O1_MINI       # "o1-mini" - Compact original reasoning
+```
+
+### Usage
+
+```python
+from synkro import create_pipeline
+from synkro.models import OpenAI
+
+pipeline = create_pipeline(
+    model=OpenAI.GPT_5_MINI,      # Generation
+    grading_model=OpenAI.GPT_52,  # Verification (use stronger model)
+)
+```
+
+---
+
+## Anthropic
+
+```python
+from synkro.models import Anthropic
+
+# Claude 4.5 (Latest)
+Anthropic.CLAUDE_45_OPUS    # Premium: State-of-the-art for coding and agents
+Anthropic.CLAUDE_45_SONNET  # Standard: Default model, faster and context-aware
+Anthropic.CLAUDE_45_HAIKU   # Light: High-speed, cost-effective
+
+# Claude 4 (Previous Gen)
+Anthropic.CLAUDE_4_SONNET   # "claude-sonnet-4-20250514"
+Anthropic.CLAUDE_4_OPUS     # "claude-opus-4-20250514"
+
+# Claude 3.5 (Legacy)
+Anthropic.CLAUDE_35_SONNET  # "claude-3-5-sonnet-20241022"
+Anthropic.CLAUDE_35_HAIKU   # "claude-3-5-haiku-20241022"
+```
+
+### Usage
+
+```python
+from synkro import create_pipeline
+from synkro.models import Anthropic
+
+pipeline = create_pipeline(
+    model=Anthropic.CLAUDE_45_SONNET,
+    grading_model=Anthropic.CLAUDE_45_OPUS,
+)
+```
+
+---
+
+## Google
+
+```python
+from synkro.models import Google
+
+# Gemini 3 (Latest)
+Google.GEMINI_3_PRO    # "gemini/gemini-3-pro"
+Google.GEMINI_3_FLASH  # "gemini/gemini-3-flash"
+
+# Gemini 2.5
+Google.GEMINI_25_PRO   # "gemini/gemini-2.5-pro"
+Google.GEMINI_25_FLASH # "gemini/gemini-2.5-flash"
+
+# Gemini 2
+Google.GEMINI_2_FLASH      # "gemini/gemini-2.0-flash"
+Google.GEMINI_2_FLASH_LITE # "gemini/gemini-2.0-flash-lite"
+```
+
+### Usage
+
+```python
+from synkro import create_pipeline
+from synkro.models import Google
+
+pipeline = create_pipeline(
+    model=Google.GEMINI_25_FLASH,
+    grading_model=Google.GEMINI_25_PRO,
+)
+```
+
+---
+
+## Local Models
+
+For local LLM servers (Ollama, vLLM, LM Studio, etc.):
+
+```python
+from synkro.models import Local, LocalModel
+
+# Using Local helper
+model = Local.llama("llama3.2:latest")
+model = Local.mistral("mistral:latest")
+model = Local.deepseek("deepseek-r1:8b")
+
+# Direct LocalModel
+model = LocalModel("my-custom-model")
+```
+
+### Usage with Ollama
+
+```python
+from synkro import create_pipeline
+from synkro.models import Local
+
+pipeline = create_pipeline(
+    model=Local.llama("llama3.2:latest"),
+    grading_model=Local.llama("llama3.2:70b"),
+    base_url="http://localhost:11434/v1",
+)
+```
+
+### Usage with vLLM
+
+```python
+from synkro import create_pipeline
+from synkro.models import LocalModel
+
+pipeline = create_pipeline(
+    model=LocalModel("meta-llama/Llama-3.2-8B-Instruct"),
+    base_url="http://localhost:8000/v1",
+)
+```
+
+---
+
+## String Models
+
+You can also use model strings directly:
+
+```python
+from synkro import create_pipeline
+
+# OpenAI-compatible string
+pipeline = create_pipeline(model="gpt-4o-mini")
+
+# Any model string
+pipeline = create_pipeline(model="custom-model-name")
+```
+
+---
+
+## Model Selection Guide
+
+| Use Case | Generation Model | Grading Model |
+|----------|-----------------|---------------|
+| Production (quality) | GPT-5.2 / Claude 4.5 Opus | Same or stronger |
+| Production (balanced) | GPT-5-mini / Claude 4.5 Sonnet | GPT-5.2 / Claude 4.5 Opus |
+| Development | GPT-5-mini / Gemini Flash | Same |
+| Cost-sensitive | GPT-5-nano / Gemini Flash Lite | GPT-5-mini |
+| Air-gapped/Privacy | Local (Ollama/vLLM) | Same |
+
+---
+
+## API Keys
+
+Set API keys via environment variables:
+
+```bash
+# OpenAI
+export OPENAI_API_KEY="sk-..."
+
+# Anthropic
+export ANTHROPIC_API_KEY="sk-ant-..."
+
+# Google
+export GOOGLE_API_KEY="..."
+# or
+export GEMINI_API_KEY="..."
+```
+
+Or configure in code:
+
+```python
+import os
+os.environ["OPENAI_API_KEY"] = "sk-..."
+```
