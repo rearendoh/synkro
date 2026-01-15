@@ -1,5 +1,10 @@
 # Synkro
 
+[![PyPI version](https://img.shields.io/pypi/v/synkro.svg)](https://pypi.org/project/synkro/)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Documentation](https://img.shields.io/badge/docs-synkro.sh-purple.svg)](https://synkro.sh)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
 Framework for turning unstructured policies, handbooks, and documentation into high-quality conversation, tool calling or evaluation data for LLMs.
 
 ## Features
