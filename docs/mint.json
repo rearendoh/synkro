@@ -1,0 +1,67 @@
+{
+  "$schema": "https://mintlify.com/schema.json",
+  "name": "Synkro",
+  "logo": {
+    "dark": "/logo/dark.svg",
+    "light": "/logo/light.svg"
+  },
+  "favicon": "/favicon.svg",
+  "colors": {
+    "primary": "#0ea5e9",
+    "light": "#38bdf8",
+    "dark": "#0284c7"
+  },
+  "topbarLinks": [
+    {
+      "name": "GitHub",
+      "url": "https://github.com/velocitybolt/synkro"
+    }
+  ],
+  "topbarCtaButton": {
+    "name": "Get Started",
+    "url": "https://pypi.org/project/synkro/"
+  },
+  "tabs": [
+    {
+      "name": "API Reference",
+      "url": "api-reference"
+    }
+  ],
+  "anchors": [
+    {
+      "name": "GitHub",
+      "icon": "github",
+      "url": "https://github.com/velocitybolt/synkro"
+    },
+    {
+      "name": "PyPI",
+      "icon": "python",
+      "url": "https://pypi.org/project/synkro/"
+    }
+  ],
+  "navigation": [
+    {
+      "group": "Get Started",
+      "pages": ["introduction", "quickstart", "installation"]
+    },
+    {
+      "group": "Core Concepts",
+      "pages": ["concepts/pipeline", "concepts/logic-map", "concepts/coverage"]
+    },
+    {
+      "group": "Dataset Types",
+      "pages": ["datasets/conversation", "datasets/instruction", "datasets/evaluation", "datasets/tool-call"]
+    },
+    {
+      "group": "API Reference",
+      "pages": ["api-reference/overview"]
+    },
+    {
+      "group": "Functions",
+      "pages": ["api-reference/generate", "api-reference/generate-scenarios", "api-reference/grade", "api-reference/create-pipeline"]
+    }
+  ],
+  "footerSocials": {
+    "github": "https://github.com/velocitybolt/synkro"
+  }
+}
